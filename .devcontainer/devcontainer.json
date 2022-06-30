@@ -5,7 +5,7 @@
 	"build": {
 		"dockerfile": "Dockerfile",
 		"args": {
-			"HUGOVERSION": "0.80.0",
+			"HUGOVERSION": "0.89.4",
 			"VARIANT": "bullseye"
 		}
 	},
