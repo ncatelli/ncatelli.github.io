@@ -7,4 +7,4 @@ author = "Nate Catelli"
 enableComments = false
 +++
 
-I'm a programmer and system's engineer currently working for Disney Streaming Services.
+I'm a programmer and systems engineer currently working for Disney Streaming Services. My hobbies include retro-computing, language dev, computer history and pretty much any software space that I have no business working in.
