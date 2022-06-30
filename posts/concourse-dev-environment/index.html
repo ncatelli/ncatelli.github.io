@@ -1,0 +1,178 @@
+<!doctype html><html lang=en-us><head><title>Building a Docker-based Development Environment for Concourse-CI | Nate Catelli's Blog</title><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge,chrome=1"><meta name=viewport content="width=device-width,minimum-scale=1"><meta name=description content="A write-up on creating a local development environment for concourse-ci."><meta name=generator content="Hugo 0.101.0"><meta name=ROBOTS content="INDEX, FOLLOW"><link rel=stylesheet href=/css/style.css><link rel="shortcut icon" href=/images/favicon.ico type=image/x-icon></head><body><nav class=navigation><a href=/><span class=arrow>←</span>Home</a>
+<a href=/posts>Archive</a>
+<a href=/tags>Tags</a>
+<a href=/about>About</a>
+<a href=/projects>Projects</a>
+<a class=button href=https://ncatelli.github.io/index.xml>Subscribe</a></nav><main class=main><section id=single><h1 class=title>Building a Docker-based Development Environment for Concourse-CI</h1><div class=tip><time datetime="2018-03-25 00:00:00 +0000 UTC">Mar 25, 2018</time>
+<span class=split>·</span>
+<span>1307 words</span>
+<span class=split>·</span>
+<span>7 minute read</span></div><aside class=toc><details><summary>Table of Contents</summary><div><nav id=TableOfContents><ul><li><a href=#introduction>Introduction</a></li><li><a href=#requirements>Requirements</a></li><li><a href=#setup>Setup</a></li><li><a href=#services>Services</a><ul><li><a href=#network-and-volumes>Network and volumes</a></li><li><a href=#worker-service>Worker Service</a></li><li><a href=#keygen-sidecar>Keygen sidecar</a></li><li><a href=#fly-service>Fly service</a></li></ul></li><li><a href=#putting-it-all-together>Putting it all together</a><ul><li><a href=#configuring-a-pipeline>Configuring a pipeline</a></li></ul></li><li><a href=#conclusion>Conclusion</a></li></ul></nav></div></details></aside><div class=content><h2 id=introduction>Introduction <a href=#introduction class=anchor>🔗</a></h2><p>Jenkins has predominantly been the bread and butter CI/CD tool for technology organizations, where very few tools have been able to compete with the expressiveness of its Groovy-based DSL and the extensibility of its plugin ecosystem. That being said, its tool API is not very straightforward and its configuration lends itself to eventually becoming a snowflake server on an organization&rsquo;s network. Because of this, I&rsquo;m always looking for new CI/CD tools to play with. <a href=https://concourse-ci.org/ target=_blank rel=noopener>concourse-ci</a> caught my eye with its simple YAML-based configuration DSL and modular architecture. One thing I like about concourse-ci is how easy it is to integrate with VCS, enabling a high degree of automation.</p><p>Concourse-ci offers a few options for turning up a development environment. Many of them use a tool written by its parent organization, <a href=https://www.cloudfoundry.org/ target=_blank rel=noopener>Cloud Foundry</a>, called <a href=https://bosh.io/ target=_blank rel=noopener>bosh</a>. There is a docker-compose tutorial that offers an environment to play with the UI, but it&rsquo;s missing many core components that prevents it from being usable for large-scale testing. I&rsquo;ve made some modifications to their docker-compose environment, which makes it easier to experiment and develop concourse pipelines.</p><h2 id=requirements>Requirements <a href=#requirements class=anchor>🔗</a></h2><p>In order to proceed with this tutorial, you will need to install the following tools:</p><ul><li><a href=https://docs.docker.com/install/ target=_blank rel=noopener>docker 1.13.0+</a></li><li><a href=https://docs.docker.com/compose/install/ target=_blank rel=noopener>docker-compose</a></li></ul><h2 id=setup>Setup <a href=#setup class=anchor>🔗</a></h2><p>You will need to clone the <a href=https://github.com/ncatelli/concourse-development-environment target=_blank rel=noopener>concourse dev environment repo</a>.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>git clone https://github.com/ncatelli/concourse-development-environment
+</span></span><span style=display:flex><span>cd concourse-development-environment
+</span></span><span style=display:flex><span>docker-compose up
+</span></span></code></pre></div><h2 id=services>Services <a href=#services class=anchor>🔗</a></h2><p>The <a href=https://github.com/ncatelli/concourse-development-environment/blob/master/docker-compose.yml target=_blank rel=noopener>docker-compose.yml</a> in the repository defines 3 core services: web, worker and db. It also includes a sidecar to handle key generation, a service for the <a href=http://concourse-ci.org/fly-cli.html target=_blank rel=noopener>fly</a> cli utility, and a synchronization service to wrap it all together.</p><h3 id=network-and-volumes>Network and volumes <a href=#network-and-volumes class=anchor>🔗</a></h3><p>I&rsquo;ve defined a frontend and backend network in order to separate the fly and worker services from postgres. I&rsquo;ve also defined a flyrc volume for persisting the fly configurations across subsequent runs of the fly service.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=display:flex><span><span style=color:#f92672>volumes</span>:
+</span></span><span style=display:flex><span>  <span style=color:#f92672>flyrc</span>:
+</span></span><span style=display:flex><span>  <span style=color:#f92672>web_keys</span>:
+</span></span><span style=display:flex><span>  <span style=color:#f92672>worker_keys</span>:
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>networks</span>:
+</span></span><span style=display:flex><span>  <span style=color:#f92672>frontend</span>:
+</span></span><span style=display:flex><span>  <span style=color:#f92672>backend</span>:
+</span></span></code></pre></div><h4 id=web-apiui-service>Web API/UI Service <a href=#web-apiui-service class=anchor>🔗</a></h4><p>The web API/UI service is a stateless service that handles build scheduling, user interaction, and worker managemement. This service primarily interacts with end users, workers, and any polled resources to determine if a build should be scheduled. In our docker-compose environment, it is configured to communicate with the postgres database and is in both the frontend and backend networks.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=display:flex><span>  <span style=color:#f92672>web</span>:
+</span></span><span style=display:flex><span>    <span style=color:#f92672>image</span>: <span style=color:#ae81ff>concourse/concourse:3.9.2</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>command</span>: 
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>web</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>ports</span>: 
+</span></span><span style=display:flex><span>      - <span style=color:#e6db74>&#34;8080:8080&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>volumes</span>: 
+</span></span><span style=display:flex><span>      - <span style=color:#e6db74>&#34;web_keys:/concourse-keys:ro&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>restart</span>: <span style=color:#ae81ff>unless-stopped </span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>environment</span>:
+</span></span><span style=display:flex><span>      <span style=color:#f92672>CONCOURSE_BASIC_AUTH_USERNAME</span>: <span style=color:#ae81ff>concourse</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>CONCOURSE_BASIC_AUTH_PASSWORD</span>: <span style=color:#ae81ff>changeme</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>CONCOURSE_EXTERNAL_URL</span>: <span style=color:#e6db74>&#34;${CONCOURSE_EXTERNAL_URL}&#34;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>CONCOURSE_POSTGRES_HOST</span>: <span style=color:#e6db74>&#39;db&#39;</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>CONCOURSE_POSTGRES_USER</span>: <span style=color:#ae81ff>concourse</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>CONCOURSE_POSTGRES_PASSWORD</span>: <span style=color:#ae81ff>changeme</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>CONCOURSE_POSTGRES_DATABASE</span>: <span style=color:#ae81ff>concourse</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>networks</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>frontend</span>
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>backend</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>depends_on</span>: 
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>db</span>
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>ready</span>
+</span></span></code></pre></div><h3 id=worker-service>Worker Service <a href=#worker-service class=anchor>🔗</a></h3><p>The <a href=https://github.com/ncatelli/concourse-development-environment/blob/master/worker/Dockerfile target=_blank rel=noopener>worker service</a> is responsible for executing builds. It polls the web-api (ATC) for jobs. These jobs are configured to run within Docker containers, so it is important that the worker can access to the Docker engine. The problem with the default docker-compose tutorial is that Docker has not been added to the runner. We will extend both the compose file and the Dockerfile to mount the local host&rsquo;s Docker socket into the worker container.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=display:flex><span>  <span style=color:#f92672>worker</span>:
+</span></span><span style=display:flex><span>    <span style=color:#f92672>build</span>:
+</span></span><span style=display:flex><span>      <span style=color:#f92672>context</span>: <span style=color:#ae81ff>./worker</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>privileged</span>: <span style=color:#66d9ef>true</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>command</span>: <span style=color:#ae81ff>worker</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>volumes</span>: 
+</span></span><span style=display:flex><span>      - <span style=color:#e6db74>&#34;worker_keys:/concourse-keys:ro&#34;</span>
+</span></span><span style=display:flex><span>      - <span style=color:#e6db74>&#34;/var/run/docker.sock:/var/run/docker.sock&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>environment</span>:
+</span></span><span style=display:flex><span>      <span style=color:#f92672>CONCOURSE_TSA_HOST</span>: <span style=color:#ae81ff>web</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>networks</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>frontend</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>depends_on</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>web</span>
+</span></span></code></pre></div><p>We will need to install Docker on the local host.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-dockerfile data-lang=dockerfile><span style=display:flex><span><span style=color:#66d9ef>FROM</span><span style=color:#e6db74> concourse/concourse:3.9.2</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010></span><span style=color:#66d9ef>LABEL</span> maintainer<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;Nate Catelli &lt;ncatelli@packetfire.org&gt;&#34;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010></span><span style=color:#66d9ef>LABEL</span> description<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;Containerized version of a concourse worker running docker.&#34;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010></span><span style=color:#66d9ef>VOLUME</span><span style=color:#e6db74> /var/lib/docker</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010></span><span style=color:#66d9ef>RUN</span> apt-get update -y <span style=color:#f92672>&amp;&amp;</span> <span style=color:#ae81ff>\
+</span></span></span><span style=display:flex><span><span style=color:#ae81ff></span>    apt-get install curl -yq <span style=color:#f92672>&amp;&amp;</span> <span style=color:#ae81ff>\
+</span></span></span><span style=display:flex><span><span style=color:#ae81ff></span>    curl -sSL https://get.docker.com/ | sh <span style=color:#f92672>&amp;&amp;</span> <span style=color:#ae81ff>\
+</span></span></span><span style=display:flex><span><span style=color:#ae81ff></span>    apt-get clean<span style=color:#960050;background-color:#1e0010>
+</span></span></span></code></pre></div><p>Since our goal is to invoke the concourse worker, we will simply extend the concourse image by triggering the Docker install shell script. We should now be able to schedule builds on our worker.</p><h3 id=keygen-sidecar>Keygen sidecar <a href=#keygen-sidecar class=anchor>🔗</a></h3><p>Both the worker and web containers require keys in order to operate. Before we can start using our containers, we will need to create a sidecar container to generate these keys. This can be accomplished with an alpine container and openssh.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-dockerfile data-lang=dockerfile><span style=display:flex><span><span style=color:#66d9ef>FROM</span><span style=color:#e6db74> alpine:3.7</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010></span><span style=color:#66d9ef>LABEL</span> description<span style=color:#f92672>=</span><span style=color:#e6db74>&#39;Key generation sidecar for concourse-ci&#39;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010></span><span style=color:#66d9ef>LABEL</span> maintainer<span style=color:#f92672>=</span><span style=color:#e6db74>&#39;Nate Catelli &lt;ncatelli@packetfire.org&gt;&#39;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010></span><span style=color:#66d9ef>ENV</span> KEY_DIR<span style=color:#f92672>=</span><span style=color:#e6db74>&#39;/data&#39;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010></span><span style=color:#66d9ef>COPY</span> start.sh /usr/local/bin/start.sh<span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010></span><span style=color:#66d9ef>RUN</span> chmod +x /usr/local/bin/start.sh <span style=color:#f92672>&amp;&amp;</span> <span style=color:#ae81ff>\
+</span></span></span><span style=display:flex><span><span style=color:#ae81ff></span>    apk add --no-cache openssh<span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010></span><span style=color:#66d9ef>VOLUME</span><span style=color:#e6db74> ${KEY_DIR}</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010></span><span style=color:#66d9ef>WORKDIR</span><span style=color:#e6db74> ${KEY_DIR}</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010></span><span style=color:#66d9ef>CMD</span> [<span style=color:#e6db74>&#34;/usr/local/bin/start.sh&#34;</span>]<span style=color:#960050;background-color:#1e0010>
+</span></span></span></code></pre></div><p>We will create a small alpine image to generate our keys. Then we will invoke a bash script provided by the concourse team that will generate our keys.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=display:flex><span><span style=color:#75715e>#!/bin/sh
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span>mkdir -p ./web ./worker
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>ssh-keygen -t rsa -f ./web/tsa_host_key -N <span style=color:#e6db74>&#39;&#39;</span>
+</span></span><span style=display:flex><span>ssh-keygen -t rsa -f ./web/session_signing_key -N <span style=color:#e6db74>&#39;&#39;</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>ssh-keygen -t rsa -f ./worker/worker_key -N <span style=color:#e6db74>&#39;&#39;</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>cp ./worker/worker_key.pub ./web/authorized_worker_keys
+</span></span><span style=display:flex><span>cp ./web/tsa_host_key.pub ./worker
+</span></span></code></pre></div><p>Finally, we will mount volumes for each service&rsquo;s keys.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=display:flex><span>  <span style=color:#f92672>keygen_sidecar</span>:
+</span></span><span style=display:flex><span>    <span style=color:#f92672>build</span>:
+</span></span><span style=display:flex><span>      <span style=color:#f92672>context</span>: <span style=color:#ae81ff>./keygen_sidecar</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>working_dir</span>: <span style=color:#e6db74>&#34;/data&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>volumes</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#e6db74>&#34;worker_keys:/data/worker&#34;</span>
+</span></span><span style=display:flex><span>      - <span style=color:#e6db74>&#34;web_keys:/data/web&#34;</span>
+</span></span></code></pre></div><h3 id=fly-service>Fly service <a href=#fly-service class=anchor>🔗</a></h3><p>The <a href=http://concourse-ci.org/fly-cli.html target=_blank rel=noopener>fly cli</a> is used to interact with the web API and will be our main point of interaction with concourse. It can be used to create and trigger pipelines, inspect workers and poll the states of jobs. Since fly is a static binary, we can wrap it in a small alpine image.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-dockerfile data-lang=dockerfile><span style=display:flex><span><span style=color:#66d9ef>FROM</span><span style=color:#e6db74> alpine:3.7</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010></span><span style=color:#66d9ef>ARG</span> VERSION<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;3.9.2&#34;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010></span><span style=color:#66d9ef>LABEL</span> description<span style=color:#f92672>=</span><span style=color:#e6db74>&#39;Command container for concourse fly cli&#39;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010></span><span style=color:#66d9ef>LABEL</span> maintainer<span style=color:#f92672>=</span><span style=color:#e6db74>&#39;Nate Catelli &lt;ncatelli@packetfire.org&gt;&#39;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010></span><span style=color:#66d9ef>VOLUME</span><span style=color:#e6db74> /root</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010></span><span style=color:#66d9ef>ADD</span> https://github.com/concourse/concourse/releases/download/v<span style=color:#e6db74>${</span>VERSION<span style=color:#e6db74>}</span>/fly_linux_amd64 /usr/local/bin/fly<span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010></span><span style=color:#66d9ef>RUN</span> chmod +x /usr/local/bin/fly<span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010></span><span style=color:#66d9ef>ENTRYPOINT</span> [ <span style=color:#e6db74>&#34;/usr/local/bin/fly&#34;</span> ]<span style=color:#960050;background-color:#1e0010>
+</span></span></span><span style=display:flex><span><span style=color:#960050;background-color:#1e0010></span><span style=color:#66d9ef>CMD</span> [ <span style=color:#e6db74>&#34;-h&#34;</span> ]<span style=color:#960050;background-color:#1e0010>
+</span></span></span></code></pre></div><p>Our main point of persistence for fly is the .flyrc file. Since our image is run as the root user, we can simply persist the state of our fly service by making the /root directory of our fly service a volume. We can then invoke this service any number of times without losing our login credentials.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=display:flex><span>  <span style=color:#f92672>fly</span>:
+</span></span><span style=display:flex><span>    <span style=color:#f92672>build</span>:
+</span></span><span style=display:flex><span>      <span style=color:#f92672>context</span>: <span style=color:#ae81ff>./fly</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>args</span>:
+</span></span><span style=display:flex><span>        <span style=color:#f92672>VERSION</span>: <span style=color:#e6db74>&#34;3.9.2&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>volumes</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>flyrc:/root</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>networks</span>:
+</span></span><span style=display:flex><span>      - <span style=color:#ae81ff>frontend</span>
+</span></span></code></pre></div><h2 id=putting-it-all-together>Putting it all together <a href=#putting-it-all-together class=anchor>🔗</a></h2><p>Using all of these services we can now start our cluster by running <code>docker-compose up</code>. This should bring up each of our dependent services followed by the web-ui. This can be viewed by browsing to port 8080 on your localhost which should present you with and empty version of the web UI, showing that no pipelines are configured.</p><h3 id=configuring-a-pipeline>Configuring a pipeline <a href=#configuring-a-pipeline class=anchor>🔗</a></h3><p>Let&rsquo;s push a simple hello world task to the concourse api using our fly service. We will begin by authenticating fly with the service. The following command connects to our concourse api using the basic auth credentials under the <code>main</code> team name.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ docker-compose run --entrypoint sh fly
+</span></span><span style=display:flex><span>$ fly login -c http://web:8080 -u concourse -p changeme -t main
+</span></span><span style=display:flex><span>$ fly ts
+</span></span><span style=display:flex><span>name  url              team  expiry
+</span></span><span style=display:flex><span>main  http://web:8080  main  Tue, <span style=color:#ae81ff>10</span> Apr <span style=color:#ae81ff>2018</span> 01:22:41 UTC
+</span></span></code></pre></div><p>We can then create a basic hello world pipeline using the following simple pipeline. Which we should save locally to <code>test-task.yml</code>.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=display:flex><span>---
+</span></span><span style=display:flex><span><span style=color:#f92672>jobs</span>:
+</span></span><span style=display:flex><span>- <span style=color:#f92672>name</span>: <span style=color:#ae81ff>job-hello-world</span>
+</span></span><span style=display:flex><span>  <span style=color:#f92672>public</span>: <span style=color:#66d9ef>true</span>
+</span></span><span style=display:flex><span>  <span style=color:#f92672>plan</span>:
+</span></span><span style=display:flex><span>    - <span style=color:#f92672>task</span>: <span style=color:#ae81ff>hello-world</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>config</span>:
+</span></span><span style=display:flex><span>        <span style=color:#f92672>platform</span>: <span style=color:#ae81ff>linux</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>image_resource</span>:
+</span></span><span style=display:flex><span>          <span style=color:#f92672>type</span>: <span style=color:#ae81ff>docker-image</span>
+</span></span><span style=display:flex><span>          <span style=color:#f92672>source</span>:
+</span></span><span style=display:flex><span>            <span style=color:#f92672>repository</span>: <span style=color:#ae81ff>ubuntu</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>run</span>:
+</span></span><span style=display:flex><span>          <span style=color:#f92672>path</span>: <span style=color:#ae81ff>echo</span>
+</span></span><span style=display:flex><span>          <span style=color:#f92672>args</span>:
+</span></span><span style=display:flex><span>            - <span style=color:#ae81ff>hello world</span>
+</span></span></code></pre></div><p>We can finally push it to the concourse api with the following command. This applies our configuration and unpauses the pipeline. After running the following commands you should now see the pipeline in your web UI, which you can manually trigger by clicking the job and clicking the <code>+</code> symbol in the top right corner.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ fly -t main sp -c test-task.yaml -p helloworld
+</span></span><span style=display:flex><span>apply configuration? <span style=color:#f92672>[</span>yN<span style=color:#f92672>]</span>: y
+</span></span><span style=display:flex><span>pipeline created!
+</span></span><span style=display:flex><span>you can view your pipeline here: http://web:8080/teams/main/pipelines/helloworld
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>the pipeline is currently paused. to unpause, either:
+</span></span><span style=display:flex><span>  - run the unpause-pipeline command
+</span></span><span style=display:flex><span>  - click play next to the pipeline in the web ui
+</span></span><span style=display:flex><span>$ fly -t main up -p helloworld
+</span></span></code></pre></div><p>Optionally, you can run the job via fly with the following trigger job command.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ fly -t main gp -p helloworld
+</span></span><span style=display:flex><span>groups: <span style=color:#f92672>[]</span>
+</span></span><span style=display:flex><span>resources: <span style=color:#f92672>[]</span>
+</span></span><span style=display:flex><span>resource_types: <span style=color:#f92672>[]</span>
+</span></span><span style=display:flex><span>jobs:
+</span></span><span style=display:flex><span>- name: job-hello-world
+</span></span><span style=display:flex><span>  public: true
+</span></span><span style=display:flex><span>  plan:
+</span></span><span style=display:flex><span>  - task: hello-world
+</span></span><span style=display:flex><span>    config:
+</span></span><span style=display:flex><span>      platform: linux
+</span></span><span style=display:flex><span>      image_resource:
+</span></span><span style=display:flex><span>        type: docker-image
+</span></span><span style=display:flex><span>        source:
+</span></span><span style=display:flex><span>          repository: ubuntu
+</span></span><span style=display:flex><span>      run:
+</span></span><span style=display:flex><span>        path: echo
+</span></span><span style=display:flex><span>        args:
+</span></span><span style=display:flex><span>        - hello world
+</span></span><span style=display:flex><span>$ fly -t main tj -j helloworld/job-hello-world
+</span></span><span style=display:flex><span>started helloworld/job-hello-world <span style=color:#75715e>#2</span>
+</span></span></code></pre></div><h2 id=conclusion>Conclusion <a href=#conclusion class=anchor>🔗</a></h2><p>This simple docker environment should be enough to get you started running your first concourse pipelines. To expand on your pipeline&rsquo;s complexity, I recommend referencing the great tutorials at <a href=https://concoursetutorial.com/ target=_blank rel=noopener>concource tutorials</a> as well as working your way through the <a href=https://concourse-ci.org/docs.html target=_blank rel=noopener>documentation</a> on the various components involved in creating a pipeline.</p></div><div class=tags><a href=https://ncatelli.github.io/tags/docker>docker</a>
+<a href=https://ncatelli.github.io/tags/ci/cd>ci/cd</a>
+<a href=https://ncatelli.github.io/tags/concourse>concourse</a></div></section></main><footer id=footer><div id=social><a class=symbol href=https://github.com/ncatelli/ rel=me target=_blank><svg fill="#bbb" width="28" height="28" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><title>Github</title><desc>Created with Sketch.</desc><defs/><g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="Social-Icons---Rounded-Black" transform="translate(-264.000000, -939.000000)"><g id="Github" transform="translate(264.000000, 939.000000)"><path d="M8 72H64c4.418278.0 8-3.581722 8-8V8c0-4.418278-3.581722-8-8-8H8c-4.418278 811624501e-24-8 3.581722-8 8V64c541083001e-24 4.418278 3.581722 8 8 8z" id="Rounded" fill="#bbb"/><path d="M35.9985 13C22.746 13 12 23.7870921 12 37.096644c0 10.6440272 6.876 19.6751861 16.4145 22.8617681C29.6145 60.1797862 30.0525 59.4358488 30.0525 58.7973276 30.0525 58.2250681 30.0315 56.7100863 30.0195 54.6996482c-6.6765 1.4562499-8.085-3.2302544-8.085-3.2302544-1.0905-2.7829884-2.664-3.5239139-2.664-3.5239139C17.091 46.4500754 19.4355 46.4801943 19.4355 46.4801943c2.4075.1701719 3.675 2.4833051 3.675 2.4833051 2.142 3.6820383 5.6175 2.6188404 6.9855 2.0014024C30.3135 49.4077535 30.9345 48.3460615 31.62 47.7436831 26.2905 47.1352808 20.688 45.0691228 20.688 35.8361671c0-2.6308879.9345-4.781379 2.4705-6.4665327C22.911 28.7597262 22.0875 26.3110578 23.3925 22.9934585c0 0 2.016-.6475568 6.6 2.4697516C31.908 24.9285993 33.96 24.6620468 36.0015 24.6515052 38.04 24.6620468 40.0935 24.9285993 42.0105 25.4632101c4.581-3.1173084 6.5925-2.4697516 6.5925-2.4697516C49.9125 26.3110578 49.089 28.7597262 48.8415 29.3696344 50.3805 31.0547881 51.309 33.2052792 51.309 35.8361671c0 9.2555448-5.6115 11.29309-10.9575 11.8894446.860999999999997.7439374 1.629 2.2137408 1.629 4.4621184C41.9805 55.4089489 41.9505 58.0067059 41.9505 58.7973276 41.9505 59.4418726 42.3825 60.1918338 43.6005 59.9554002 53.13 56.7627944 60 47.7376593 60 37.096644 60 23.7870921 49.254 13 35.9985 13" fill="#fff"/></g></g></g></svg></a></div><div class=copyright></div></footer></body></html>

