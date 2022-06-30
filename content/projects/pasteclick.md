@@ -5,5 +5,5 @@ projectlink = 'https://github.com/PacketFire/paste-click'
 tags = ['go', 'golang']
 type = 'project'
 weight = 1
-draft = false
+draft = true
 +++
