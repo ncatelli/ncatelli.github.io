@@ -2,8 +2,8 @@
 title = 'Daily Bugle Boot2Root Write-Up'
 date = '2020-11-27'
 author = 'Nate Catelli'
-tags = ["ctf", "boot2root", "hacking", "writeup", "tryhackme"]
-description = 'A boot2root writeup of the Daily Bugle host from TryHackMe'
+summary = 'A boot2root writeup of the Daily Bugle host from TryHackMe.'
+tags = ['ctf', 'boot2root', 'hacking', 'writeup', 'tryhackme']
 draft = false
 +++
 

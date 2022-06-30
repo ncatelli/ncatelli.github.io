@@ -1,11 +1,11 @@
 +++
-title = "Kenobi Boot2Root Write-Up"
+title = 'Kenobi Boot2Root Write-Up'
 date = '2020-11-14'
-author = "Nate Catelli"
+author = 'Nate Catelli'
+summary = 'A boot2root writeup of the Kenobi host from TryHackMe.'
 tags = [
-    "ctf", "boot2root", "hacking", "writeup", "tryhackme"
+    'ctf', 'boot2root', 'hacking', 'writeup', 'tryhackme'
 ]
-description = 'A boot2root writeup of the Kenobi host from TryHackMe'
 draft = false
 +++
 

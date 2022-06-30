@@ -2,8 +2,8 @@
 title = 'Blue Boot2Root Write-Up'
 date = '2020-11-11'
 author = 'Nate Catelli'
+summary = 'A boot2root writeup of the Blue host from TryHackMe.'
 tags = ['ctf', 'boot2root', 'hacking', 'writeup', 'tryhackme']
-description = 'A boot2root writeup of the Blue host from TryHackMe'
 draft = false
 +++
 

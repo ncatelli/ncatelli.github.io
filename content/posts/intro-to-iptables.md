@@ -2,12 +2,12 @@
 title = 'Intro to IPTables with Service-Based Firewalls'
 date = '2017-09-07'
 author = 'Nate Catelli'
-tags = ["networking", "iptables"]
-description = 'An introductory tutorial to simple firewalls with iptables.'
+summary = 'An introductory tutorial to simple firewalls with iptables.'
+tags = ['networking', 'iptables']
 draft = false
 +++
 
-### Introduction
+## Introduction
 
 IPTables is a stateful firewall implemented via the netfilter kernel module. To many, learning iptables can be a daunting task, however when stuctured correctly an iptables firewall can be both simple to understand and easily automated. This tutorial will function as the first in a series of articles focused on firewalling with iptables.
 
@@ -15,7 +15,7 @@ In this tutorial, we will focus on creating a comprehensible firewall focused on
 
 We will be using a Vagrant-based playground to complete this tutorial, you will need vagrant 1.6+, git and rsync installed.
 
-### Setup
+## Setup
 
 To begin, you will need to clone the [iptables example repo](https://github.com/ncatelli/iptables_examples.git).
 
@@ -57,11 +57,11 @@ target     prot opt source               destination
 
 Don't worry if the output from the previous iptables command is unfamiliar to you. A quick intro to iptables will be provided in the next section.
 
-### IPTables
+## IPTables
 
 To the user, IPTables exposes kernel-level packet filtering functionality via sequential rules. These rules are logically grouped within chains, allowing different rules to be evaluated based on described conditions. Chains are grouped into larger logical groups called tables. For now this tutorial, we will be focusing exclusively on the filter table and it is enough to understand that other tables exist and provide other functionality.
 
-#### Filter table
+### Filter table
 
 The filter table is used for filtering packets to and from services on the localhost. This can be as simple as blocking access to all ports on a host from all new incoming requests while allowing outbound traffic to a server, or managing whitelists of IPs. However, complex behaviors can also be implemented within the filter table such as port knocking, rate-limiting and many other behaviors. For the purpose of this tutorial, we will attempt to build a firewall that is both powerful, yet simple to read and structured in a way that is conducive to automation. We will limit this to two services running on this host. SSH and HTTP. Let's begin by learning how we can look at the state of our filter table and learning how to read it.
 
@@ -99,7 +99,7 @@ target     prot opt source               destination
 
 The filter table, by default, has 3 predefined chains, INPUT, OUTPUT AND FORWARD. These chains are the entry-points for packets into the filter table depending on the source and destination of a packet. The INPUT chain receives packets that are destined for the localhost. It is here that you will do your common filtering for your services, such as blocking external traffic to ssh or whitelisting HTTP traffic to the world. The OUTPUT chain will be the default entrypoint for any packet that is sourced from the localhost. It is here that an administrator could block outbound connections to VPNs or ratelimit external requests, to give a few example. The FORWARD chain is used for controlling where packets can be routed. This could include adding filters to traffic that is to be NAT'd to hosts behind your firewall or even locally to virtual machines or containers.
 
-#### Targets
+### Targets
 
 You will also notice that each built-in chain has a policy associated with it. In the case of each of our chains, the default policy is to ACCEPT. The policy of a chain allows an administrator to specify the target that a packet will default to, should a packet not match any rules that direct it to a target.
 
@@ -115,7 +115,7 @@ A target allows an administrator to specify the end destination of a packet and 
 
 By understanding these targets and policies, we can see that our filter table is accepting any packet that is coming to or from our server. It is worth noting that changing these policies without having the correct rules in place can lead to an administrator firewalling themselves out of a host as these policies set the default behavior of the entire chain. We will explore how we can customize our firewalls with more fine grained rules in the next section.
 
-### IPTables Rules
+## IPTables Rules
 
 In this next section we are going to work on adding rules to whitelist necessary services. We will then explore ways that we can limit traffic to other services that we do not explicitly allow. To accomplish this we will execute the following commands to define this rule in the INPUT chain and chang the policy.
 
@@ -167,7 +167,7 @@ PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data
 
 To resolve this issue, we will make use of IPTables connection state tracking.
 
-#### Connection State Tracking
+### Connection State Tracking
 
 IPTables is considered a stateful firewall due to its ability to perform connection tracking. This provides a ton of power and flexibility as packets can be associated with a running connection, allowing matches of previous packets to persist state to later packets. We will use this exact feature to fix the ping problem from before.
 
@@ -195,7 +195,7 @@ target     prot opt source               destination
 
 Though this firewall is easy to read now, as the ruleset grows this can quickly become complex and unreadable. Being able to break rules up into smaller logical grouping allows the ruleset to grow while still being easily readable. In the next section we will restructure our firewall to use user-defined chains and begin setting up the structure of our service-based firewall.
 
-### User-defined Chains
+## User-defined Chains
 
 Defining our own chains aside from the INPUT, FORWARD and OUTPUT chain will allow us to create logical whitelists based on services and break up our rules into smaller, easily understandable sequences. We will begin by defining an inbound chain for SSH.
 
@@ -254,7 +254,7 @@ ACCEPT     all  --  10.0.0.11            0.0.0.0/0
 
 This user-defined chain may leave a new admin with additional questions. Like, what happens if no rule matches a packet that is jumped to this target. Any packet sent to the ```SSH_IN``` chain that does not match any rule will be returned to it's calling chain, in this case ```INPUT```. In the next section we will setup an additional service for whitelisting http.
 
-#### More Services
+### More Services
 
 Currently we have an instance of nginx listening on port 80 of node1. Lets create a new chain for the http service. and and add a whitelist for all the private subnets on node2. That will be ```10.0.100.0/24``` and ```10.0.0.0/24```. Currently, packets destined for port 80 on node1 will be dropped. This can be verifed by attempting to curl the nginx site from node2.
 
@@ -309,7 +309,7 @@ ETag: "59b6deb0-264"
 Accept-Ranges: bytes
 ```
 
-### Next Steps
+## Next Steps
 
 Managing firewalls on a service by service basis makes it simple to add and remove access to a service by adding or removing a rule to a chain. An administrator can extend this further by managing the outgoing rules to limit access to internal services on their network and better restrict the network accessibilty of their server to only services they define. This setup also lends itself to the use of [IP Sets](http://ipset.netfilter.org), a fast indexable data structure for storing large sets of IP addresses, which could significantly benefit performance for large chains.
 

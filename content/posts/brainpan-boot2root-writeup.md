@@ -2,8 +2,8 @@
 title = 'Brainpan Boot2Root Write-Up'
 date = '2020-12-22'
 author = 'Nate Catelli'
+summary = 'A boot2root writeup of the Brainpan1 host from TryHackMe.'
 tags = ['ctf', 'boot2root', 'hacking', 'writeup', 'tryhackme']
-description = 'A boot2root writeup of the Brainpan1 host from TryHackMe'
 draft = false
 +++
 

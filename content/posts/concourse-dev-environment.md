@@ -2,8 +2,8 @@
 title = 'Building a Docker-based Development Environment for Concourse-CI'
 date = '2018-03-25'
 author = 'Nate Catelli'
-tags = ["docker", "ci/cd", "concourse"]
-description = 'A write-up on creating a local development environment for concourse-ci.'
+summary = 'A write-up on creating a local development environment for concourse-ci.'
+tags = ['docker', 'ci/cd', 'concourse']
 draft = false
 +++
 

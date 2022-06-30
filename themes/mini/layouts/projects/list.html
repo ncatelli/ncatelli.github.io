@@ -2,20 +2,12 @@
 {{ partial "profile.html" . }}
 
 <section id="archive">
-
     {{ range .Data.Pages.GroupByDate "2006" }}
     <div class="group">
-        <h3 class="key">
-            {{ .Key }}
-        </h3>
-
         {{ range .Pages }}
         <div class="value">
-            <div class="date">
-                <time datetime="{{ .PublishDate }}">{{ i18n "publishDateShort" . }}</time>
-            </div>
             <div class="title">
-                <a href="{{ .Permalink }}">
+                <a href="{{ .Params.projectlink }}">
                     {{ .Title }}
                 </a>
 
@@ -26,16 +18,13 @@
                     {{ end }}
                 </div>
                 {{ end}}
+                <div>
+                    {{ .Summary }}
+                </div>
             </div>
         </div>
         {{ end }}
     </div>
-
     {{ end }}
-
-
-
 </section>
-
-
 {{ end }}

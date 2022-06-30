@@ -2,12 +2,12 @@
 title = 'Intro to BGP with BIRD'
 date = '2020-06-13'
 author = 'Nate Catelli'
+summary  = 'An introductory tutorial on BGP using BIRD and docker.'
 tags = ["networking"]
-description  = 'An introductory tutorial on BGP using BIRD and docker.'
 draft = false
 +++
 
-### Introduction
+## Introduction
 
 Border Gateway Protocol (BGP) is one of the core technologies involved in making our internet work, allowing networks to communicate their routes among eachother. Understanding how this tool can be used to define the topology of a network will both give you a better understanding of how internetworking and allow you translate this robustness into your own network.
 
@@ -16,7 +16,7 @@ By the end of this tutorial, you will be familiar with the core concepts of BGP 
 I plan to achieve this using a virtualized docker playground which can be downloaded [here](https://github.com/ncatelli/bird_examples_docker.git)
 . In order to complete this tutorial you will need to ensure you have docker and docker-compose installed.
 
-### Setup
+## Setup
 
 To begin, you will need to clone the repo of the [bird_examples_docker](https://github.com/ncatelli/bird_examples_docker.git) project.
 
@@ -28,7 +28,7 @@ ncatelli@ofet> docker-compose up -d
 
 This should create three containers (peer1, peer2 and peer3), all of which have BIRD installed and have peering sessions established. Don't worry if you don't know what this means yet, we will cover it shortly after we have our BGP playground set up and ready to go.
 
-### Login in to your playground
+## Login in to your playground
 
 We will start by connecting to peer1 and checking that everything was setup correctly.
 
@@ -46,9 +46,9 @@ peer3    BGP      master   up     02:36:07    Established
 
 If you see that peer2 and peer3 are "Established", everything is working as expected and we are ready to go. Before we begin playing with this playground, I will provide a brief overview of how BGP works.
 
-### BGP Overview
+## BGP Overview
 
-#### Terminology
+### Terminology
 
 Border Gateway Protocol ([BGP](https://en.wikipedia.org/wiki/Border_Gateway_Protocol)) is an exterior gateway protocol that is used to exchange routing information between autonomous systems. An autonomous system ([AS](https://en.wikipedia.org/wiki/Autonomous_system_(Internet))) is an organizational unit of routing prefixes and policies. These AS are identified by a unique 16-bit, and later 32-bit, autonomous system number (ASN). For example, Facebook's ASN would be 32934 or as commonly presented AS32934. The power of BGP lies in its ability to communicate routing protocols and policies among tens of thousands of decentralized AS.
 
@@ -56,11 +56,11 @@ The internet, along with many other networks, is composed of many autonomous sys
 
 While BGP is considered an exterior gateway protocol that is used for routing between large organizations on the internet, it can also be used within an AS to enable their network engineers to control the topology of their internal network. This is where the terms exterior BGP (eBGP) and interior BGP (iBGP) stem from. iBGP will be our focus for the rest of this tutorial. We will now start experimenting with these peering sessions using BIRD and its interactive command-line tool, birdc.
 
-### Introduction to BIRD
+## Introduction to BIRD
 
 BIRD is a fully-functional routing daemon that supports many different routing protocols, including BGP. BIRD provides a simple configuration format and command line utility for interacting with sessions. BIRD also comes with built-in support for both IPv4 and IPv6 and the respective tools to work with both protocols.
 
-#### Examining Sessions
+### Examining Sessions
 
 Similiar to how we verified that our docker environment was provisioned properly, we can view running sessions by running:
 
@@ -113,7 +113,7 @@ peer3    BGP      master   up     02:36:06    Established
 
 By stopping the bird daemon on peer2, we have made the TCP connection on port 179 close between peer1 and peer2. Doing this changes our peer session from Established to Connect. Established and Connect correspond to two of many BGP states, however for the sake of this tutorial we will focus only on Established and consider all other values as not-established. For those more curious, more information on session states can be found in the [wikipedia article on BGP](https://en.wikipedia.org/wiki/Border_Gateway_Protocol#Finite-state_machines).
 
-#### Configuring a BGP Session
+### Configuring a BGP Session
 
 Although we now know how to check whether our session are up in our BGP playground, it's also important to understand how these sessions were configured in the first place. For that, we need to dig into the bird configuration files. Let's look at the configuration files under /etc/bird on peer1.
 
@@ -178,9 +178,9 @@ While establishing and maintaining sessions is crucial to the operation of BGP, 
 
 Currently we have three nodes in our network, peer1 (AS64512), peer2 (AS64513) and peer3 (AS64514). These are configured in the same broadcast domain however the peering is structured like peer3 <-> peer1 <-> peer2. This structure allows communication of routes from either peer2 or peer3 through our route server, peer1. Please keep this topology in mind as we proceed with the next step of this tutorial, advertising routes.
 
-### Advertising Routes with BGP
+## Advertising Routes with BGP
 
-#### Kernel Protocol
+### Kernel Protocol
 
 Before we begin announcing routes between bird daemons, we should first understand how BIRD communicates routes between the linux kernel and the BIRD daemon. This is where that kernel protocol block we saw earlier comes into play.
 
@@ -219,7 +219,7 @@ learn;
 
 Finally, we will set the _learn_ directive which will allow other daemons to learn about routes from the kernel routing table.
 
-#### Discovering direct routes
+### Discovering direct routes
 
 Now that we have configured our BIRD daemons to push routes directly to the kernel routing table, we will need to configure our peers to discover local direct routes. Since we will be adding these routes directly to our loopback interface, in your editor of choice, let's configure the direct protocol to only use the lo interface.
 
@@ -262,7 +262,7 @@ BIRD 1.6.6 ready.
         BGP.local_pref: 100
 ```
 
-#### Filtering imports and exports
+### Filtering imports and exports
 
 Similar to the kernel module, export and import can be used to control what is imported and exported by a BGP peer. Let's begin by exploring the concept of filtering and how it can be used to control what routes will be announced or exported.
 
@@ -319,7 +319,7 @@ Restarting bird_examples_peer2_1 ... done
 Restarting bird_examples_peer1_1 ... done
 ```
 
-#### Announcing Routes with BIRD
+### Announcing Routes with BIRD
 
 We now have all the building blocks we need to begin announcing routes between peer1 and peer2. Before we do that, let's recap what we have done. To begin, we've configured the BIRD daemon to communicate between its internal routing tables and the kernel routing tables with our kernel protocol. We've configured the BIRD daemon to learn routes from the loopback interface with the direct protocol. We've also configured peer1 to import routes from the other peers and export those routes. Finally we configured peer2 to only export ```192.168.5.5/32``` to peer1 with our export_subnets filter. However, at this point we have no routes currently announced from peer2 to peer1.
 
@@ -424,6 +424,6 @@ BGP.as_path: 64512 64513
 
 Because peer1 was configured to export routes to peer3, and because peer3 was configured to import routes from peer1, we were able to get this route into the BIRD routing table on peer3. Then, because we have the kernel protocol configured to export routes in BIRD, these routes will make it into the kernel routing table on peer3.
 
-### Next steps
+## Next steps
 
 We've explored many concepts in this simple tutorial, however we've barely scratched the surface of what bird and, by extension, BGP can do. Feel free to use this playground to further experiement with announcing and filtering routes. In later tutorials, we will dig deeper into how BGP works and the processes it uses to determine routes, including what communities and local preference are and how these can be used by your BGP daemon to choose the best path to a server. We will also explore what an anycasted IP is and how we can configure high-availability with BGP as well as how we can use filtering policies, in place of our direct interface policies, to control what prefixes are announced to each node. BGP can give you a significant amount of control over the topology of your network and understanding how to use it will allow you to better shape your network to how you see fit.

@@ -2,19 +2,19 @@
 title = 'Using Makefiles with Go'
 date = '2019-12-11'
 author = 'Nate Catelli'
+summary = 'Using make to wrap golang with extra functionality.'
 tags = [
     "make",
     "golang",
 ]
-description = 'Using make to wrap golang with extra functionality.'
 draft = true
 +++
 
-### Introduction
+## Introduction
 
 One of my favorite features of golang is its simple toolchain for builds. However at times, I've wished that I could easily add tasks to a build step. Using GNU Make, I've found that I can quickly and easily wrap the go toolchain in a consistent way that leaves plenty of room for customization.
 
-### Wrapping Common Go Commands
+## Wrapping Common Go Commands
 
 Primarily, I've been able to get away with 1:1 mapping of many of the go tool chain directly behind corresponding make commands.
 
@@ -49,7 +49,7 @@ lint:
  golint -set_exit_status ./...
 ```
 
-### Leveraging go modules
+## Leveraging go modules
 
 By leveraging go modules, we can also insure that each build will have the required dependencies for our toolchain, an example being the golint command as can be seen in the below example `go.mod` file.
 
@@ -63,7 +63,7 @@ require (
 go 1.13
 ```
 
-### Use With cGo
+## Use With cGo
 
 Though simply wrapping the go toolchain appears to add very little value while adding additional complexity, we begin to see greater benefit when dealing with additional external C libraries. My first use of makefiles with go was while working with [libfreeipmi](https://www.gnu.org/software/freeipmi/). At the time, I was attempting to implement golang bindings for a limited subset of libfreeipmi which required building the shared objects for libfreeipmi from source. Adding this build process to the makefile simplified the building of the library and was easily defined by adding a few extra blocks:
 
@@ -95,7 +95,7 @@ clean:
   make clean
 ```
 
-### Leveraging Docker Environments in Makefiles
+## Leveraging Docker Environments in Makefiles
 
 If you are not using cGo, you can still benefit from the Makefiles abstraction by wrapping a docker build environment. I've included an example of a Makefile from our pasteclick project that wraps a small docker environment with libmagic installed.
 
@@ -115,6 +115,6 @@ test: | fmt
 
 Leveraging a container and make, one is able to provide a consistent build process in a build environment that is repeatable across platforms.
 
-### Summary
+## Summary
 
 While the go toolchain is sufficient for purely go packages, leveraging simple makefiles to augment this toolchain with additional tasks is a simple and viable option for keeping your build processes down to a few concise commands.

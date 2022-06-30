@@ -6,7 +6,6 @@ theme = 'mini'
 [social] 
 github = 'https://github.com/ncatelli/'
 
-
 # Site parameters
 [params]
 author = 'Nate Catelli'
@@ -19,4 +18,8 @@ showToc = true
 showPowerBy = false
 math = false
 hiddenPostSummaryInHomePage = false
-copyright = ' ' 
+copyright = ' '
+
+[[params.links]]
+name = "Projects"
+path = "/projects"
