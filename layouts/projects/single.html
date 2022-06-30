@@ -1,7 +1,7 @@
 {{ define "main" }}
 
 <section id="single">
-  <h1 class="title">{{ .Title }}</h1>
+  <h1 class="title"><a href="{{ .Params.projectlink | urlize }}">{{ .Title }}</a></h1>
 
   <div class="content">
     {{ .Summary }}
