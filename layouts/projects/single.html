@@ -1,0 +1,22 @@
+{{ define "main" }}
+
+<section id="single">
+  <h1 class="title"><a href="{{ .Params.projectlink | urlize }}">{{ .Title }}</a></h1>
+
+  <div class="content">
+    {{ .Summary }}
+  </div>
+
+  {{ with .Params.tags }}
+  <div class="tags">
+    {{ range . }}
+    <a href="{{ "tags/" | absURL }}{{ . | urlize }}">{{ . }}</a>
+    {{ end }}
+  </div>
+  {{ end}}
+
+  {{ partial "comment.html" . }}
+
+</section>
+
+{{ end }}
