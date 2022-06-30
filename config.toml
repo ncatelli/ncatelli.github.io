@@ -1,3 +1,22 @@
 baseURL = 'https://ncatelli.github.io/'
 languageCode = 'en-us'
 title = "Nate Catelli's Blog"
+theme = 'mini'
+
+[social] 
+github = 'https://github.com/ncatelli/'
+
+
+# Site parameters
+[params]
+author = 'Nate Catelli'
+bio = 'A Systems Engineer and Dumb Project Builder'
+description = 'Blog, notes and an excuse to write once a year.'
+enableRSS = true
+enableComments = false 
+enableGoogleAnalytics = false 
+showToc = true
+showPowerBy = false
+math = false
+hiddenPostSummaryInHomePage = false
+copyright = ' ' 
