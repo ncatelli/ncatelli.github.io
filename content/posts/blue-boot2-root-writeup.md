@@ -703,7 +703,7 @@ With the credentials in hand I decided to try my had at a remote desktop session
 root@kali:~# rdesktop -u Jon 10.10.87.38
 ```
 
-![Jon's PC](/img/blue_boot2root_jon_pc.png)
+![Jon's PC](/static/img/blue_boot2root_jon_pc.png)
 
 ## Summary
 
