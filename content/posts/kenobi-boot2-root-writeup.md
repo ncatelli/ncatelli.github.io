@@ -64,11 +64,11 @@ Nmap done: 1 IP address (1 host up) scanned in 25.27 second
 
 This scan uncovered a great deal of information about the host. It appeared to be an Ubuntu linux distro, running sambda, proftpd, and a webserver, each of which represented a viable path for investigation. I started by opening firefox to see what the website it was serving looked like.
 
-![Kenobi site index](/img/kenobi_http_index.png)
+![Kenobi site index](/static/img/kenobi_http_index.png)
 
 I tried a few different URLs for fun and ended up getting lucky with `robots.txt` which pointed out that there was a static `admin.html` page.
 
-![Kenobi site admin](/img/kenobi_http_admin.png)
+![Kenobi site admin](/static/img/kenobi_http_admin.png)
 
 Given that there were a few other targets, I decided to look into those before enumerating the webserver further. Samba seemed like a reasonable next choice and I began by enumerating both shares and users using two of the smb scripts provided with nmap.
 
