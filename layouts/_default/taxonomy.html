@@ -1,0 +1,44 @@
+{{ define "main" }}
+{{ partial "profile.html" . }}
+
+<section id="archive">
+
+    {{ range .Data.Pages.GroupByDate "2006" }}
+    <div class="group">
+        {{ if ne .Key "0001" }}
+        <h3 class="key">
+            {{ .Key }}
+        </h3>
+        {{ end }}
+
+        {{ range .Pages }}
+        <div class="value">
+            <div class="date">
+                {{ if eq .Type "projects" }}
+                Project
+                {{ else }}
+                <time datetime="{{ .PublishDate }}">{{ i18n "publishDateShort" . }}</time>
+                {{ end }}
+            </div>
+            <div class="title">
+                <a href="{{ .Permalink }}">
+                    {{ .Title }}
+                </a>
+
+                {{ with .Params.tags }}
+                <div class="tags">
+                    {{ range . }}
+                    <a href="{{ "tags/" | absURL }}{{ . | urlize }}">{{ . }}</a>
+                    {{ end }}
+                </div>
+                {{ end}}
+            </div>
+        </div>
+        {{ end }}
+    </div>
+    {{ end }}
+
+</section>
+
+
+{{ end }}
