@@ -3,7 +3,7 @@ title = 'Intro to BGP with BIRD'
 date = '2020-06-13'
 author = 'Nate Catelli'
 summary  = 'An introductory tutorial on BGP using BIRD and docker.'
-tags = ["networking"]
+tags = ['tutorial', 'networking']
 draft = false
 +++
 

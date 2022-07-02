@@ -3,7 +3,7 @@ title = 'Intro to IPTables with Service-Based Firewalls'
 date = '2017-09-07'
 author = 'Nate Catelli'
 summary = 'An introductory tutorial to simple firewalls with iptables.'
-tags = ['networking', 'iptables']
+tags = ['tutorial', 'networking', 'iptables']
 draft = false
 +++
 
