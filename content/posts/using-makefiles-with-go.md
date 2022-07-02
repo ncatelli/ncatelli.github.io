@@ -3,10 +3,7 @@ title = 'Using Makefiles with Go'
 date = '2019-12-11'
 author = 'Nate Catelli'
 summary = 'Using make to wrap golang with extra functionality.'
-tags = [
-    "make",
-    "golang",
-]
+tags = ['tutorial', 'make', 'golang']
 draft = true
 +++
 
