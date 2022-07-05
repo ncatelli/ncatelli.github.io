@@ -118,7 +118,7 @@ While I knew there had to be more here, I had a feeling this could potentially b
 
 I opened site index to find a single image and little else.
 
-![brainpan http index](/img/brainpan_http_index.png)
+![brainpan http index](/images/brainpan_http_index.png)
 
 Probing around for an `robots.txt` or other common directories yielded nothing so I decided to run `gobuster` against the webserver with the `directories-2.3-medium.txt` wordlist to see if I could identify any less common directory names.
 
@@ -182,7 +182,7 @@ Knowing there was a buffer overflow somewhere in this challege, I worked under t
 
 I began by spinning up a Windows 7 VM with a host interface so I could easily interact with it from my attack host. I then installed Immunity Debugger, and [mona](https://github.com/corelan/mona) as I assumed that there would be a buffer overflow in the input field of the service.
 
-![immunity debugger](/img/brainpan_immunity_debugger.png)
+![immunity debugger](/images/brainpan_immunity_debugger.png)
 
 Finally, I setup a project directory in mona with `!mona config -set workingfolder c:\mona\%p` and confirmed that I could hit the local brainpan service with netcat via `nc 192.168.0.14 9999`.
 
@@ -245,7 +245,7 @@ Could not connect to 192.168.0.14: 9999
 
 Running this script caused a crash with a 600 byte long payload and appeared to confirm my suspicion that this would be a simple overflow due to the instruction pointer (EIP) being overwritten with the value `41414141` or `AAAA`. After a few repeats, I could safely assume that the EIP sat at an offset between 500 and 600 bytes off from where the input was stored.
 
-![fuzzer overflow](/img/brainpan_fuzzer_overflow.png)
+![fuzzer overflow](/images/brainpan_fuzzer_overflow.png)
 
 #### Crafting an exploit
 
@@ -318,11 +318,11 @@ root@00e35ba5ecd5:~# python3 exploit.py
 
 Rerunning the script confirmed again that the EIP was overwritten and using the handy `!mona findmsp -distance 1000` command in immunity debugger I could easily identify the offset via the unique pattern in the instruction pointer.
 
-![mona findmsp](/img/brainpan_mona_findmsp.png)
+![mona findmsp](/images/brainpan_mona_findmsp.png)
 
 This showed that the EIP offset was at `524` bytes so I updated the `offset` variable in my exploit to reflect this and, additionally, set the `retn` variable to `BBBB` to confirm that I could overwrite the EIP with a known value, in this case `BBBB` or `42424242`. Rerunning the exploit quickly confirmed this.
 
-![overwrite EIP](/img/brainpan_overwrite_EIP_with_offset.png)
+![overwrite EIP](/images/brainpan_overwrite_EIP_with_offset.png)
 
 #### Identifying bad characters
 
@@ -350,7 +350,7 @@ I then replaced the payload in my exploit with the bytearray and reran the explo
 
 Running a compare against the address at the stack pointer confirmed that there were no other bad characters.
 
-![mona bad_char comparison](/img/brainpan_mona_badchar_comparison.png)
+![mona bad_char comparison](/images/brainpan_mona_badchar_comparison.png)
 
 I added the null byte to my `bad_chars` variable for documentation and cleared the bytearray payload.
 
@@ -476,7 +476,7 @@ sys.exit(0)
 
 I executed the new payload and was pleased to confirm that I had RCE.
 
-![pop calc](/img/brainpan_pop_calc.png)
+![pop calc](/images/brainpan_pop_calc.png)
 
 #### Generating a test shell payload
 
