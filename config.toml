@@ -23,3 +23,7 @@ copyright = ' '
 [[params.links]]
 name = "Projects"
 path = "/projects"
+
+[[params.links]]
+name = "Misc"
+path = "/misc"
