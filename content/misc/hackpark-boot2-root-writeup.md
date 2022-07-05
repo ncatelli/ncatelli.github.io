@@ -47,13 +47,13 @@ While this was a fairly small footprint, I decided to kick off a broader portsca
 
 I opened the site to firefox to be greeted by a less-than-pleasant clown face.
 
-![hack park index](/static/img/hackpark_http_index.png)
+![hack park index](/img/hackpark_http_index.png)
 
 This looked to be a basic blog, so I decided to do some happy path crawling around the site to build up a sitemap in burp as well as my own mental map of the site. Shortly after I found an admin login page that also provided a password recovery link.
 
 I decided to play around with the password recovery and found that `admin` returned a different result than any of the other users I had attempted.
 
-![hack park password retreival](/static/img/hackpark_http_password_retrieval.png)
+![hack park password retreival](/img/hackpark_http_password_retrieval.png)
 
 Given this supposed user, and that the earlier broad scan yielded nothing, I chose to kick off a background dictionary attack against the `admin` user while I continued to dig around in the site.
 
@@ -80,7 +80,7 @@ This quickly yielded a password that allowed me to access the admin page of the 
 
 I was wholy unfamiliar with blogengine but by clicking around, I was able to find an `about` page that gave me information about what the service version was and who it was running as. With this information in hand, I decided to check exploitdb for anything of value.
 
-![hackpark blogengine admin](/static/img/hackpark_http_blogengine.png)
+![hackpark blogengine admin](/img/hackpark_http_blogengine.png)
 
 ```bash
 root@kali:~/ctf/exploits# searchsploit blogengine -w
