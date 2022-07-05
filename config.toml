@@ -19,6 +19,7 @@ showPowerBy = false
 math = false
 hiddenPostSummaryInHomePage = false
 copyright = ' '
+avatarImgUrl = "/images/gear.svg"
 
 [[params.links]]
 name = "Projects"
